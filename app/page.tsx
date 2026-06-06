@@ -39,6 +39,19 @@ function isLikelyNonBiz(text: string): boolean {
   return NON_BIZ_KEYWORDS.some((kw) => text.includes(kw));
 }
 
+function isValidAnalysisResult(data: unknown): data is AnalysisResult {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.light === "string" &&
+    ["red", "yellow", "green"].includes(d.light) &&
+    typeof d.oneLineJudgement === "string" &&
+    typeof d.biggestRisk === "string" &&
+    typeof d.title === "string" &&
+    Array.isArray(d.marketSignals)
+  );
+}
+
 export default function Home() {
   // Risk scan state
   const [riskForm, setRiskForm] = useState({ idea: "", targetUser: "", problem: "" });
@@ -111,7 +124,14 @@ export default function Home() {
         setFullError(data.error || "判定失敗");
         return;
       }
-      setFullResult(data as AnalysisResult);
+      if(!isValidAnalysisResult(data)){
+          setFullError("系統暫時無法產生有效判定，請補充內容後再試一次。");
+          setFullResult(null);
+          setJudgmentId("");
+          setJudgmentTime("");
+          return;
+        }
+        setFullResult(data as AnalysisResult);
       const _n=new Date();
       setJudgmentId("AITL-"+_n.getFullYear()+String(_n.getMonth()+1).padStart(2,"0")+String(_n.getDate()).padStart(2,"0")+"-"+String(_n.getHours()).padStart(2,"0")+String(_n.getMinutes()).padStart(2,"0")+String(_n.getSeconds()).padStart(2,"0"));
       setJudgmentTime(_n.getFullYear()+"/"+String(_n.getMonth()+1).padStart(2,"0")+"/"+String(_n.getDate()).padStart(2,"0")+" "+String(_n.getHours()).padStart(2,"0")+":"+String(_n.getMinutes()).padStart(2,"0")+":"+String(_n.getSeconds()).padStart(2,"0"));
@@ -120,8 +140,8 @@ export default function Home() {
   }
 
     function handleDownloadReport() {
-    if(!fullResult)return;
-    const L=lightConfig[fullResult.light].label;
+    if(!isValidAnalysisResult(fullResult))return;
+    const L=(lightConfig[fullResult.light]||lightConfig.red).label;
     const qa=[["你的點子是什麼？",fullForm.idea],["目標使用者是誰？",fullForm.targetUser],["它解決什麼問題？",fullForm.problem],["你想怎麼收費？",fullForm.pricing],["第一版你打算怎麼做？",fullForm.firstVersion],["你預估多久能完成？",fullForm.buildTime]];
     let a="";
     for(let i=0;i<qa.length;i++){
@@ -319,7 +339,7 @@ export default function Home() {
         )}
 
         {/* ─── Full Result ─── */}
-        {fullResult && (
+        {isValidAnalysisResult(fullResult) && (
           <section className="mb-12 space-y-5">
             {/* Judgment metadata */}
             <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-4 backdrop-blur-sm">
@@ -340,9 +360,9 @@ export default function Home() {
 
             {/* Light indicator */}
             {/* Light indicator */}
-            <div className={`rounded-2xl border px-6 py-6 text-center backdrop-blur-sm ${lightConfig[fullResult.light].border}`}>
-              <div className={`mx-auto mb-4 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${lightConfig[fullResult.light].css}`}>
-                <span className={`inline-block h-2.5 w-2.5 rounded-full ${lightConfig[fullResult.light].dot}`} />{lightConfig[fullResult.light].label}
+            <div className={`rounded-2xl border px-6 py-6 text-center backdrop-blur-sm ${(lightConfig[fullResult.light]||lightConfig.red).border}`}>
+              <div className={`mx-auto mb-4 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${(lightConfig[fullResult.light]||lightConfig.red).css}`}>
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${(lightConfig[fullResult.light]||lightConfig.red).dot}`} />{(lightConfig[fullResult.light]||lightConfig.red).label}
               </div>
               <h2 className="mb-2 text-xl font-bold text-white">{fullResult.title}</h2>
               <p className="text-sm text-white/80">{fullResult.oneLineJudgement}</p>
