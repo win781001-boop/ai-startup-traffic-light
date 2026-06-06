@@ -55,6 +55,10 @@ export default function Home() {
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
 
+  // Judgment metadata (client-generated)
+  const [judgmentId, setJudgmentId] = useState("");
+  const [judgmentTime, setJudgmentTime] = useState("");
+
   function updateRiskField(key: string, value: string) {
     setRiskForm((prev) => ({ ...prev, [key]: value }));
     setBoundaryError(null);
@@ -108,8 +112,70 @@ export default function Home() {
         return;
       }
       setFullResult(data as AnalysisResult);
+      const _n=new Date();
+      setJudgmentId("AITL-"+_n.getFullYear()+String(_n.getMonth()+1).padStart(2,"0")+String(_n.getDate()).padStart(2,"0")+"-"+String(_n.getHours()).padStart(2,"0")+String(_n.getMinutes()).padStart(2,"0")+String(_n.getSeconds()).padStart(2,"0"));
+      setJudgmentTime(_n.getFullYear()+"/"+String(_n.getMonth()+1).padStart(2,"0")+"/"+String(_n.getDate()).padStart(2,"0")+" "+String(_n.getHours()).padStart(2,"0")+":"+String(_n.getMinutes()).padStart(2,"0")+":"+String(_n.getSeconds()).padStart(2,"0"));
     } catch { setFullError("無法連接到伺服器，請檢查網路連線。");
     } finally { setFullLoading(false); }
+  }
+
+    function handleDownloadReport() {
+    if(!fullResult)return;
+    const L=lightConfig[fullResult.light].label;
+    const qa=[["你的點子是什麼？",fullForm.idea],["目標使用者是誰？",fullForm.targetUser],["它解決什麼問題？",fullForm.problem],["你想怎麼收費？",fullForm.pricing],["第一版你打算怎麼做？",fullForm.firstVersion],["你預估多久能完成？",fullForm.buildTime]];
+    let a="";
+    for(let i=0;i<qa.length;i++){
+      a+="<div class=answer-item><div class=q>"+(i+1)+". "+qa[i][0]+"</div><div class=a>"+qa[i][1]+"</div></div>";
+    }
+    let s="";
+    if(fullResult.marketSignals&&fullResult.marketSignals.length>0){
+      s="<div class=card><h3>根據填寫內容推估的市場跡象</h3><ul class=signals>";
+      for(const m of fullResult.marketSignals){s+="<li>"+m+"</li>";}
+      s+="</ul></div>";
+    }
+    let sm="";
+    if(fullResult.quadrantSummary){
+      sm="<div class=card><h3>判定摘要</h3><p class=summary>"+fullResult.quadrantSummary.summary+"</p></div>";
+    }
+    const css="*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}"+
+      "body{font-family:-apple-system,\"Noto Sans TC\",\"PingFang TC\",system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a;padding:32px 16px}"+
+      ".container{max-width:780px;margin:0 auto}"+
+      ".header h1{font-size:22px;font-weight:700;margin-bottom:12px}"+
+      ".header .meta{font-size:13px;color:#666;line-height:1.7}"+
+      ".light-card{text-align:center;padding:32px 20px;border-radius:12px;border:1.5px solid #ddd;margin-bottom:20px}"+
+      ".light-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;vertical-align:middle}"+
+      ".light-label{font-size:16px;font-weight:700;vertical-align:middle}"+
+      ".light-red .light-dot{background:#c0392b}"+
+      ".light-red .light-label{color:#c0392b}"+
+      ".light-yellow .light-dot{background:#b8860b}"+
+      ".light-yellow .light-label{color:#b8860b}"+
+      ".light-green .light-dot{background:#1a7a42}"+
+      ".light-green .light-label{color:#1a7a42}"+
+      ".light-card h2{font-size:18px;margin-top:8px;color:#1a1a1a}"+
+      ".light-card p{font-size:14px;margin-top:6px;color:#444}"+
+      ".card{background:white;border-radius:10px;border:1px solid #e0e0e0;padding:20px;margin-bottom:16px}"+
+      ".card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:12px}"+
+      ".answer-item{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;line-height:1.5}"+
+      ".answer-item:last-child{border-bottom:none}"+
+      ".answer-item .q{font-weight:600;color:#888;font-size:12px}"+
+      ".answer-item .a{color:#1a1a1a;margin-top:2px;word-break:break-word}"+
+      ".signals{list-style:none}"+
+      ".signals li{padding:6px 0;font-size:13px;line-height:1.5;color:#333}"+
+      ".reminder{text-align:center;font-size:12px;color:#999;margin-top:32px}";
+    const h="<!DOCTYPE html><html lang=zh-Hant><head><meta charset=UTF-8><title>AI創業紅綠燈 判定報告</title><style>"+css+"</style></head><body><div class=container>"+
+      "<div class=header><h1>AI創業紅綠燈 判定報告</h1><div class=meta>"+
+      "判定編號:"+judgmentId+"<br>判定時間:"+judgmentTime+"<br>版本:v0.4-alpha"+"</div></div>"+
+      "<div class=\"light-card light-"+fullResult.light+"\"><div><span class=light-dot></span><span class=light-label>"+L+"</span></div><h2>"+fullResult.title+"</h2><p>"+fullResult.oneLineJudgement+"</p></div>"+
+      "<div class=card><h3>你的本次回答摘要</h3>"+a+"</div>"+s+sm+
+      "<div class=card><h3>最大風險</h3><p class=summary>"+fullResult.biggestRisk+"</p></div>"+
+      "<p class=reminder>請自行保存本檔案。本工具目前不提供永久結果保存。</p>"+
+      "</div></body></html>";
+    const b=new Blob([h],{type:"text/html;charset=utf-8"});
+    const u=URL.createObjectURL(b);
+    const el=document.createElement("a");
+    el.href=u;el.download=judgmentId+".html";
+    document.body.appendChild(el);el.click();
+    document.body.removeChild(el);URL.revokeObjectURL(u);
   }
 
   async function handleFeedback(value: FeedbackValue) {
@@ -255,6 +321,24 @@ export default function Home() {
         {/* ─── Full Result ─── */}
         {fullResult && (
           <section className="mb-12 space-y-5">
+            {/* Judgment metadata */}
+            <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-4 backdrop-blur-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium text-text-secondary">判定編號</p>
+                  <p className="mt-0.5 text-sm font-mono font-bold text-white">{judgmentId}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium text-text-secondary">判定時間</p>
+                  <p className="mt-0.5 text-sm text-white">{judgmentTime}</p>
+                </div>
+              </div>
+              <div className="mt-2 border-t border-white/[0.06] pt-2">
+                <p className="text-xs text-text-secondary/60">版本：v0.4-alpha</p>
+              </div>
+            </div>
+
+            {/* Light indicator */}
             {/* Light indicator */}
             <div className={`rounded-2xl border px-6 py-6 text-center backdrop-blur-sm ${lightConfig[fullResult.light].border}`}>
               <div className={`mx-auto mb-4 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${lightConfig[fullResult.light].css}`}>
@@ -322,6 +406,14 @@ export default function Home() {
               </div>
             )}
 
+            {/* Save card */}
+            <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+              <p className="mb-4 text-sm text-text-secondary/60 text-center">將此判定儲存為獨立的 HTML 報告檔案。</p>
+              <button onClick={handleDownloadReport} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90">
+                下載本次判定
+              </button>
+              <p className="mt-2 text-xs text-center text-text-secondary/50">請自行保存本檔案。本工具目前不提供永久結果保存。</p>
+            </div>
 
             {/* Feedback */}
             <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
