@@ -42,8 +42,20 @@ export default function Home() {
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
 
-  function updateRiskField(key: string, value: string) { setRiskForm((prev) => ({ ...prev, [key]: value })); }
-  function updateFullField(key: string, value: string) { setFullForm((prev) => ({ ...prev, [key]: value })); }
+  function updateRiskField(key: string, value: string) {
+    setRiskForm((prev) => ({ ...prev, [key]: value }));
+    setBoundaryError(null);
+    setShowPayment(false);
+    setShowFullForm(false);
+    setFullResult(null);
+    setFullError(null);
+  }
+  function updateFullField(key: string, value: string) {
+    setFullForm((prev) => ({ ...prev, [key]: value }));
+    setFullError(null);
+    setFullResult(null);
+    setBoundaryError(null);
+  }
 
   function handleRiskNext() {
     if (!riskForm.idea?.trim() || !riskForm.targetUser?.trim() || !riskForm.problem?.trim()) return;
