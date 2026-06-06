@@ -1,26 +1,62 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #0f0f14;
+  --bg-secondary: #1a1a24;
+  --bg-card: #22222f;
+  --text-primary: #f0f0f5;
+  --text-secondary: #9d9db0;
+  --red-light: #ff4d4d;
+  --red-glow: rgba(255, 77, 77, 0.3);
+  --yellow-light: #ffb347;
+  --yellow-glow: rgba(255, 179, 71, 0.3);
+  --green-light: #33d685;
+  --green-glow: rgba(51, 214, 133, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.06);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-red-light: var(--red-light);
+  --color-yellow-light: var(--yellow-light);
+  --color-green-light: var(--green-light);
+  --font-sans: var(--font-geist-sans), "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Noto Sans Mono", monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+@keyframes pulse-glow-red {
+  0%, 100% { box-shadow: 0 0 20px var(--red-glow); }
+  50% { box-shadow: 0 0 40px var(--red-glow); }
+}
+@keyframes pulse-glow-yellow {
+  0%, 100% { box-shadow: 0 0 20px var(--yellow-glow); }
+  50% { box-shadow: 0 0 40px var(--yellow-glow); }
+}
+@keyframes pulse-glow-green {
+  0%, 100% { box-shadow: 0 0 20px var(--green-glow); }
+  50% { box-shadow: 0 0 40px var(--green-glow); }
+}
+.glow-red { animation: pulse-glow-red 2s ease-in-out infinite; }
+.glow-yellow { animation: pulse-glow-yellow 2s ease-in-out infinite; }
+.glow-green { animation: pulse-glow-green 2s ease-in-out infinite; }

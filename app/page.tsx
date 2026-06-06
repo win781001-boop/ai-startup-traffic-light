@@ -1,65 +1,344 @@
-import Image from "next/image";
+﻿"use client";
+
+import { useState } from "react";
+import type { AnalysisResult } from "@/app/api/analyze-idea/route";
+import type { RiskScanResult } from "@/app/api/risk-scan/route";
+
+const DEMO_CASES = [
+  { title: "全品類 AI 電商平台", light: "red" as const, quadrant: "低需求 × 慢交付", judgement: "目標使用者、付費者與第一批商家都不明確，但第一版包含平台、會員、金流、物流、客服與後台，交付過重。" },
+  { title: "AI 個人化穿搭電商", light: "yellow" as const, quadrant: "高需求 × 慢交付", judgement: "穿搭與購物決策可能有需求，但第一版若同時包含 AI 推薦、商品資料、庫存、購物車與會員，版本太重。" },
+  { title: "AI 商品幸運色推薦", light: "yellow" as const, quadrant: "低需求 × 快交付", judgement: "點子有趣且容易做，但需求與付費意願不明，較適合小測，不適合重做。" },
+  { title: "銀髮族防滑用品推薦清單", light: "green" as const, quadrant: "高需求 × 快交付", judgement: "使用者族群明確，痛點具體，第一版可以用一頁式清單測商品點擊，不需要先做商城。" },
+];
+
+const EVIDENCE_LABELS: Record<string, { label: string; klass: string }> = {
+  "明確證據": { label: "明確證據", klass: "bg-green-light/15 text-green-light border-green-light/30" },
+  "主觀假設": { label: "主觀假設", klass: "bg-yellow-light/15 text-yellow-light border-yellow-light/30" },
+  "資訊不足": { label: "資訊不足", klass: "bg-white/10 text-text-secondary border-white/20" },
+  "明確風險": { label: "明確風險", klass: "bg-red-light/15 text-red-light border-red-light/30" },
+};
+
+type FeedbackValue = "準" | "普通" | "不準";
 
 export default function Home() {
+  // Risk scan state
+  const [riskForm, setRiskForm] = useState({ idea: "", problem: "", firstVersion: "" });
+  const [riskResult, setRiskResult] = useState<RiskScanResult | null>(null);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [riskError, setRiskError] = useState<string | null>(null);
+
+  // Payment & full assessment state
+  const [showPayment, setShowPayment] = useState(false);
+  const [showFullForm, setShowFullForm] = useState(false);
+  const [fullForm, setFullForm] = useState({ idea: "", problem: "", loss: "", payer: "", alternative: "", delivery: "" });
+  const [fullResult, setFullResult] = useState<AnalysisResult | null>(null);
+  const [fullLoading, setFullLoading] = useState(false);
+  const [fullError, setFullError] = useState<string | null>(null);
+
+  // Feedback state
+  const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
+
+  function updateRiskField(key: string, value: string) { setRiskForm((prev) => ({ ...prev, [key]: value })); }
+  function updateFullField(key: string, value: string) { setFullForm((prev) => ({ ...prev, [key]: value })); }
+
+  async function handleRiskSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setRiskLoading(true); setRiskError(null);
+    try {
+      const res = await fetch("/api/risk-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(riskForm) });
+      const data = await res.json();
+      if (!res.ok) { setRiskError(data.error || "掃描失敗"); return; }
+      setRiskResult(data as RiskScanResult);
+      setShowPayment(true);
+    } catch { setRiskError("無法連接到伺服器，請檢查網路連線。");
+    } finally { setRiskLoading(false); }
+  }
+
+  function handlePaymentClick() {
+    setShowFullForm(true);
+    setFullForm((prev) => ({ ...prev, idea: riskForm.idea, problem: riskForm.problem }));
+  }
+
+  async function handleFullSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFullLoading(true); setFullError(null);
+    try {
+      const res = await fetch("/api/analyze-idea", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fullForm) });
+      const data = await res.json();
+      if (!res.ok) { setFullError(data.error || "判定失敗"); return; }
+      setFullResult(data as AnalysisResult);
+    } catch { setFullError("無法連接到伺服器，請檢查網路連線。");
+    } finally { setFullLoading(false); }
+  }
+
+  async function handleFeedback(value: FeedbackValue) {
+    setFeedbackSent(value);
+    try { await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedback: value }) }); } catch { /* silent */ }
+  }
+
+  const lightConfig: Record<string, { label: string; dot: string; css: string; border: string }> = {
+    red: { label: "紅燈", dot: "bg-red-light", css: "bg-red-light/15 text-red-light border-red-light/30 glow-red", border: "border-red-light/20" },
+    yellow: { label: "黃燈", dot: "bg-yellow-light", css: "bg-yellow-light/15 text-yellow-light border-yellow-light/30 glow-yellow", border: "border-yellow-light/20" },
+    green: { label: "綠燈", dot: "bg-green-light", css: "bg-green-light/15 text-green-light border-green-light/30 glow-green", border: "border-green-light/20" },
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="min-h-screen bg-bg-primary">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-red-light/5 blur-[120px]" />
+        <div className="absolute -bottom-40 left-1/4 h-[400px] w-[400px] rounded-full bg-green-light/5 blur-[100px]" />
+      </div>
+      <div className="relative mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-20">
+
+        {/* ─── Hero ─── */}
+        <header className="mb-16 text-center">
+          <div className="mx-auto mb-6 flex h-20 w-16 items-center justify-center">
+            <svg viewBox="0 0 64 160" className="h-full w-full drop-shadow-[0_0_30px_rgba(255,255,255,0.08)]" fill="none">
+              <rect x="8" y="4" width="48" height="152" rx="16" className="fill-white/8 stroke-white/10" strokeWidth="2" />
+              <circle cx="32" cy="36" r="14" className="fill-red-light/30 stroke-red-light/40" strokeWidth="2" />
+              <circle cx="32" cy="80" r="14" className="fill-yellow-light/20 stroke-yellow-light/30" strokeWidth="2" />
+              <circle cx="32" cy="124" r="14" className="fill-green-light/20 stroke-green-light/30" strokeWidth="2" />
+            </svg>
+          </div>
+          <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
+          <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不要因為 AI 做得出來，就急著開工。</p>
+          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">49 元不是買 AI 回答，是買一次可能幫你省下一週時間的冷靜檢查。</p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">單次完整判定 49 元</div>
+        </header>
+
+        {/* ─── Suitable / Unsuitable ─── */}
+        <section className="mb-12 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-green-light/15 bg-green-light/[0.04] p-5">
+            <h3 className="mb-2 text-sm font-semibold text-green-light">適合你，如果：</h3>
+            <ul className="space-y-1.5 text-sm text-text-secondary">
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你正準備花幾天到幾週做一個 AI 副業、電商、工具或內容產品。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你有 2～5 個點子，不知道哪個該先做。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你曾經因為衝動開工，浪費過時間。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你看到 AI 能做網站或 App 後，開始想動手但缺乏產品判斷框架。</li>
+            </ul>
+          </div>
+          <div className="rounded-xl border border-red-light/15 bg-red-light/[0.04] p-5">
+            <h3 className="mb-2 text-sm font-semibold text-red-light">不適合你，如果：</h3>
+            <ul className="space-y-1.5 text-sm text-text-secondary">
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你只是好奇玩玩，沒有真的要做。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />這個點子 1～2 小時就能完成。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你已經有成熟的產品判斷能力。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你期待完整創業計畫、陪跑或整改方案。</li>
+            </ul>
+          </div>
+        </section>
+
+        {/* ─── Risk Scan Form ─── */}
+        {!riskResult && (
+          <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
+            <h2 className="mb-2 text-lg font-semibold text-white">風險掃描</h2>
+            <p className="mb-6 text-sm text-text-secondary">填 3 題，先快速了解你的點子風險在哪個方向。</p>
+            <form onSubmit={handleRiskSubmit} className="space-y-4">
+              <Field label="你的點子是什麼？" hint="簡短描述你的創業或副業點子">
+                <input type="text" value={riskForm.idea} onChange={(e) => updateRiskField("idea", e.target.value)} placeholder="例如：AI 食譜產生器" required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="它解決誰的什麼問題？" hint="描述目標使用者和他們的痛點">
+                <input type="text" value={riskForm.problem} onChange={(e) => updateRiskField("problem", e.target.value)} placeholder="例如：家庭主婦每天煩惱要煮什麼" required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="第一版你打算怎麼做？大概要多久？" hint="描述第一版的範圍和預估時間">
+                <input type="text" value={riskForm.firstVersion} onChange={(e) => updateRiskField("firstVersion", e.target.value)} placeholder="例如：用 GPT API 做一個 LINE Bot，約 2 週" required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <button type="submit" disabled={riskLoading} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
+                {riskLoading ? <><Spinner />掃描中…</> : "開始風險掃描"}
+              </button>
+            </form>
+          </section>
+        )}
+
+        {/* ─── Risk Scan Error ─── */}
+        {riskError && (
+          <div className="mb-8 rounded-xl border border-red-light/20 bg-red-light/5 px-5 py-4 text-sm text-red-light"><span className="font-semibold">錯誤：</span>{riskError}</div>
+        )}
+
+        {/* ─── Risk Scan Result + Test Mode Banner ─── */}
+        {riskResult && (
+          <>
+            <section className="mb-4 rounded-2xl border border-yellow-light/20 bg-yellow-light/[0.04] p-6 backdrop-blur-sm sm:p-8">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-light/20 bg-yellow-light/10 px-3 py-1 text-xs font-medium text-yellow-light">{riskResult.riskArea}</div>
+              <p className="mb-2 text-sm leading-relaxed text-text-secondary">{riskResult.oneLineRisk}</p>
+              <p className="text-xs text-text-secondary/60">{riskResult.cta}</p>
+            </section>
+            {riskResult.oneLineRisk.startsWith("測試模式") && (
+              <div className="mb-4 rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
+                目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ─── Payment Card ─── */}
+        {showPayment && !fullResult && (
+          <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">單次完整判定 49 元</div>
+            <p className="mb-4 text-sm leading-relaxed text-text-secondary">完成 6 題後，系統會根據需求、付費意願、替代方案、交付速度與維護負擔，判斷你的點子是紅燈、黃燈還是綠燈。</p>
+            <p className="mb-6 text-xs text-text-secondary/50">目前 v0.3 為測試版，付款流程暫以占位呈現。</p>
+            {/* TODO: 未來串接金流，付款成功後才開放完整判定。 */}
+            <button onClick={handlePaymentClick} disabled={showFullForm} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-light to-orange-400 px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+              {showFullForm ? "已展開完整判定" : "付費 49 元，開始完整判定"}
+            </button>
+          </section>
+        )}
+
+        {/* ─── Full Assessment Form ─── */}
+        {showFullForm && !fullResult && (
+          <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
+            <h2 className="mb-2 text-lg font-semibold text-white">完整判定</h2>
+            <p className="mb-6 text-sm text-text-secondary">填 6 題，取得正式紅黃綠燈結果。</p>
+            <form onSubmit={handleFullSubmit} className="space-y-4">
+              <Field label="你的點子是什麼？" hint="簡短描述你的創業或副業點子">
+                <input type="text" value={fullForm.idea} onChange={(e) => updateFullField("idea", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="它解決誰的什麼問題？" hint="目標使用者和他們的痛點">
+                <input type="text" value={fullForm.problem} onChange={(e) => updateFullField("problem", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="如果不解決，使用者會損失什麼？" hint="痛點有多痛？不解決會怎樣？">
+                <input type="text" value={fullForm.loss} onChange={(e) => updateFullField("loss", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="誰會付錢？為什麼願意付？" hint="付費對象和理由">
+                <input type="text" value={fullForm.payer} onChange={(e) => updateFullField("payer", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="使用者現在不用你的產品時，怎麼解決？" hint="目前的替代方案是什麼？">
+                <input type="text" value={fullForm.alternative} onChange={(e) => updateFullField("alternative", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <Field label="第一版你打算怎麼交付？大概要幾天？" hint="交付方式和預估時間">
+                <input type="text" value={fullForm.delivery} onChange={(e) => updateFullField("delivery", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              </Field>
+              <button type="submit" disabled={fullLoading} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
+                {fullLoading ? <><Spinner />判定中…</> : "送出判定"}
+              </button>
+            </form>
+          </section>
+        )}
+
+        {/* ─── Full Assessment Error ─── */}
+        {fullError && (
+          <div className="mb-8 rounded-xl border border-red-light/20 bg-red-light/5 px-5 py-4 text-sm text-red-light"><span className="font-semibold">錯誤：</span>{fullError}</div>
+        )}
+
+        {/* ─── Full Result ─── */}
+        {fullResult && (
+          <section className="mb-12 space-y-5">
+            {/* Light indicator */}
+            <div className={`rounded-2xl border px-6 py-6 text-center backdrop-blur-sm ${lightConfig[fullResult.light].border}`}>
+              <div className={`mx-auto mb-4 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${lightConfig[fullResult.light].css}`}>
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${lightConfig[fullResult.light].dot}`} />{lightConfig[fullResult.light].label}
+              </div>
+              <p className="mb-2 text-sm font-medium text-text-secondary/70">{fullResult.quadrant}</p>
+              <h2 className="mb-2 text-xl font-bold text-white">{fullResult.title}</h2>
+              <p className="text-sm text-text-secondary">{fullResult.oneLineJudgement}</p>
+            </div>
+
+            {/* Your answers */}
+            <SectionCard title="你的本次回答摘要">
+              <div className="space-y-3">
+                {[
+                  { q: "你的點子是什麼？", a: fullForm.idea },
+                  { q: "它解決誰的什麼問題？", a: fullForm.problem },
+                  { q: "如果不解決，使用者會損失什麼？", a: fullForm.loss },
+                  { q: "誰會付錢？為什麼願意付？", a: fullForm.payer },
+                  { q: "使用者現在不用你的產品時，怎麼解決？", a: fullForm.alternative },
+                  { q: "第一版你打算怎麼交付？大概要幾天？", a: fullForm.delivery },
+                ].map((item, i) => (
+                  <div key={i} className="border-b border-white/[0.04] pb-2 last:border-0 last:pb-0">
+                    <p className="text-xs font-medium text-white/50">{i + 1}. {item.q}</p>
+                    <p className="mt-0.5 text-sm text-text-secondary break-words">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            {/* Evidence levels */}
+            <SectionCard title="證據分級">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.entries(fullResult.evidenceLevels).map(([key, level]) => {
+                  const info = EVIDENCE_LABELS[level] ?? EVIDENCE_LABELS["資訊不足"];
+                  const labelMap: Record<string, string> = { demand: "需求強度", payment: "付費意願", alternative: "替代方案", delivery: "交付速度", maintenance: "維護負擔" };
+                  return (
+                    <div key={key} className="flex items-center justify-between rounded-lg border border-white/[0.06] px-3 py-2">
+                      <span className="text-xs text-text-secondary">{labelMap[key] ?? key}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${info.klass}`}>{info.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+            {/* Reasons */}
+            <SectionCard title="判定原因">
+              <ul className="space-y-1.5">
+                {fullResult.reasons.map((r, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-text-secondary"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-white/20" />{r}</li>
+                ))}
+              </ul>
+            </SectionCard>
+
+            {/* Biggest risk */}
+            <SectionCard title="最大風險">
+              <p className="text-sm text-text-secondary">{fullResult.biggestRisk}</p>
+            </SectionCard>
+
+            {/* Test mode banner for full analysis */}
+            {fullResult.oneLineJudgement.startsWith("測試模式") && (
+              <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
+                目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
+              </div>
+            )}
+
+            {/* Feedback */}
+            <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/50">這次判定準嗎？</h3>
+              <div className="flex gap-3">
+                {(["準", "普通", "不準"] as const).map((value) => (
+                  <button key={value} onClick={() => handleFeedback(value)} disabled={feedbackSent !== null}
+                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${feedbackSent === value ? "border-white/30 bg-white/10 text-white" : "border-white/[0.08] text-text-secondary hover:border-white/20 hover:text-white"} disabled:cursor-not-allowed disabled:opacity-50`}>{value}</button>
+                ))}
+              </div>
+              {feedbackSent && <p className="mt-3 text-xs text-green-light/70">感謝回饋！</p>}
+            </div>
+          </section>
+        )}
+
+        {/* ─── Demo Cases ─── */}
+        <section className="mb-12">
+          <h2 className="mb-6 text-center text-lg font-semibold text-white">精選示範案例</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {DEMO_CASES.map((c, i) => {
+              const lc = lightConfig[c.light];
+              return (
+                <div key={i} className={`rounded-xl border p-5 backdrop-blur-sm ${lc.border}`}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className={`inline-block h-2 w-2 rounded-full ${lc.dot}`} />
+                    <span className={`text-sm font-semibold ${lc.css.split(" ")[1]}`}>{lc.label}</span>
+                  </div>
+                  <p className="mb-1 text-xs font-medium text-text-secondary/50">{c.quadrant}</p>
+                  <h3 className="mb-1.5 text-sm font-semibold text-white">{c.title}</h3>
+                  <p className="text-xs leading-relaxed text-text-secondary">{c.judgement}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ─── Footer ─── */}
+        <footer className="mt-16 text-center text-xs text-white/15">AI創業紅綠燈 v0.3 — 僅供參考，請自行驗證市場需求</footer>
+      </div>
     </div>
   );
+}
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (<div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm"><h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/50">{title}</h3>{children}</div>);
+}
+
+function Field({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+  return (<label className="block space-y-1.5"><span className="block text-sm font-medium text-white/80">{label}</span><span className="block text-xs text-white/30">{hint}</span>{children}</label>);
+}
+
+function Spinner() {
+  return (<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg>);
 }
