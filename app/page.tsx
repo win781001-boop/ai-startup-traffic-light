@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
-import type { RiskScanResult } from "@/app/api/risk-scan/route";
 
 const DEMO_CASES = [
   { title: "全品類 AI 電商平台", light: "red" as const, quadrant: "低需求 × 慢交付", judgement: "目標使用者、付費者與第一批商家都不明確，但第一版包含平台、會員、金流、物流、客服與後台，交付過重。" },
@@ -11,26 +10,31 @@ const DEMO_CASES = [
   { title: "銀髮族防滑用品推薦清單", light: "green" as const, quadrant: "高需求 × 快交付", judgement: "使用者族群明確，痛點具體，第一版可以用一頁式清單測商品點擊，不需要先做商城。" },
 ];
 
-const EVIDENCE_LABELS: Record<string, { label: string; klass: string }> = {
-  "明確證據": { label: "明確證據", klass: "bg-green-light/15 text-green-light border-green-light/30" },
-  "主觀假設": { label: "主觀假設", klass: "bg-yellow-light/15 text-yellow-light border-yellow-light/30" },
-  "資訊不足": { label: "資訊不足", klass: "bg-white/10 text-text-secondary border-white/20" },
-  "明確風險": { label: "明確風險", klass: "bg-red-light/15 text-red-light border-red-light/30" },
-};
-
 type FeedbackValue = "準" | "普通" | "不準";
+
+// 明顯非商業點子關鍵字（寬鬆檢查）
+const NON_BIZ_KEYWORDS = [
+  "圓周率", "天氣", "翻譯", "情書", "笑話", "作文", "作業",
+  "數學", "股價", "股票", "新聞", "八卦", "食譜推薦", "純聊天",
+  "盜版", "破解", "違法", "危險",
+];
+
+function isLikelyNonBiz(text: string): boolean {
+  // 太短或看起來像命令句
+  if (text.length < 8 && /^(幫我|請你|可以幫我|告訴我)/.test(text)) return true;
+  // 命中關鍵字
+  return NON_BIZ_KEYWORDS.some((kw) => text.includes(kw));
+}
 
 export default function Home() {
   // Risk scan state
-  const [riskForm, setRiskForm] = useState({ idea: "", problem: "", firstVersion: "" });
-  const [riskResult, setRiskResult] = useState<RiskScanResult | null>(null);
-  const [riskLoading, setRiskLoading] = useState(false);
-  const [riskError, setRiskError] = useState<string | null>(null);
+  const [riskForm, setRiskForm] = useState({ idea: "", targetUser: "", problem: "" });
+  const [boundaryError, setBoundaryError] = useState<string | null>(null);
 
   // Payment & full assessment state
   const [showPayment, setShowPayment] = useState(false);
   const [showFullForm, setShowFullForm] = useState(false);
-  const [fullForm, setFullForm] = useState({ idea: "", problem: "", loss: "", payer: "", alternative: "", delivery: "" });
+  const [fullForm, setFullForm] = useState({ idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "" });
   const [fullResult, setFullResult] = useState<AnalysisResult | null>(null);
   const [fullLoading, setFullLoading] = useState(false);
   const [fullError, setFullError] = useState<string | null>(null);
@@ -41,22 +45,23 @@ export default function Home() {
   function updateRiskField(key: string, value: string) { setRiskForm((prev) => ({ ...prev, [key]: value })); }
   function updateFullField(key: string, value: string) { setFullForm((prev) => ({ ...prev, [key]: value })); }
 
-  async function handleRiskSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setRiskLoading(true); setRiskError(null);
-    try {
-      const res = await fetch("/api/risk-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(riskForm) });
-      const data = await res.json();
-      if (!res.ok) { setRiskError(data.error || "掃描失敗"); return; }
-      setRiskResult(data as RiskScanResult);
-      setShowPayment(true);
-    } catch { setRiskError("無法連接到伺服器，請檢查網路連線。");
-    } finally { setRiskLoading(false); }
+  function handleRiskNext() {
+    if (!riskForm.idea?.trim() || !riskForm.targetUser?.trim() || !riskForm.problem?.trim()) return;
+
+    // Boundary check before showing payment
+    const combined = `${riskForm.idea} ${riskForm.targetUser} ${riskForm.problem}`;
+    if (isLikelyNonBiz(combined)) {
+      setBoundaryError("這個工具只判定創業、副業、產品或商業點子。\n你目前填的內容不像是一個可判定的商業點子，所以暫時不會進入完整判定。\n請改成描述一個你想做的產品、服務、內容、網站、App 或副業構想。");
+      return;
+    }
+
+    setBoundaryError(null);
+    setShowPayment(true);
   }
 
   function handlePaymentClick() {
     setShowFullForm(true);
-    setFullForm((prev) => ({ ...prev, idea: riskForm.idea, problem: riskForm.problem }));
+    setFullForm((prev) => ({ ...prev, idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
   }
 
   async function handleFullSubmit(e: React.FormEvent) {
@@ -65,7 +70,18 @@ export default function Home() {
     try {
       const res = await fetch("/api/analyze-idea", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fullForm) });
       const data = await res.json();
-      if (!res.ok) { setFullError(data.error || "判定失敗"); return; }
+      if (!res.ok) {
+        // Handle INVALID_IDEA specially
+        if (data.error === "INVALID_IDEA") {
+          setFullError("");
+          setBoundaryError(data.message || "這個輸入不像商業點子，無法判定。");
+          setShowFullForm(false);
+          setShowPayment(false);
+          return;
+        }
+        setFullError(data.error || "判定失敗");
+        return;
+      }
       setFullResult(data as AnalysisResult);
     } catch { setFullError("無法連接到伺服器，請檢查網路連線。");
     } finally { setFullLoading(false); }
@@ -128,58 +144,49 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ─── Product boundary notice ─── */}
+        <div className="mb-6 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-xs leading-relaxed text-text-secondary/60">
+          本工具只判定創業、副業、產品、服務、內容、網站、App 或商業點子。不處理一般搜尋、數學題、投資預測、即時新聞、聊天、翻譯、作業或非商業問題。
+        </div>
+
         {/* ─── Risk Scan Form ─── */}
-        {!riskResult && (
+        {!showPayment && (
           <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
-            <h2 className="mb-2 text-lg font-semibold text-white">風險掃描</h2>
-            <p className="mb-6 text-sm text-text-secondary">填 3 題，先快速了解你的點子風險在哪個方向。</p>
-            <form onSubmit={handleRiskSubmit} className="space-y-4">
+            <h2 className="mb-2 text-lg font-semibold text-white">先填 3 題，確認要判定的點子</h2>
+            <p className="mb-6 text-sm text-text-secondary">先用 3 題整理你的點子。付款後再補充 3 題，系統會依市場跡象與四象限給出紅黃綠燈判定。</p>
+            <form className="space-y-4">
               <Field label="你的點子是什麼？" hint="簡短描述你的創業或副業點子">
-                <input type="text" value={riskForm.idea} onChange={(e) => updateRiskField("idea", e.target.value)} placeholder="例如：AI 食譜產生器" required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                <input type="text" value={riskForm.idea} onChange={(e) => updateRiskField("idea", e.target.value)} placeholder="例如：AI 食譜產生器" required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="它解決誰的什麼問題？" hint="描述目標使用者和他們的痛點">
-                <input type="text" value={riskForm.problem} onChange={(e) => updateRiskField("problem", e.target.value)} placeholder="例如：家庭主婦每天煩惱要煮什麼" required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="目標使用者是誰？" hint="描述你的目標族群">
+                <input type="text" value={riskForm.targetUser} onChange={(e) => updateRiskField("targetUser", e.target.value)} placeholder="例如：每天煮飯的家庭主婦" required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="第一版你打算怎麼做？大概要多久？" hint="描述第一版的範圍和預估時間">
-                <input type="text" value={riskForm.firstVersion} onChange={(e) => updateRiskField("firstVersion", e.target.value)} placeholder="例如：用 GPT API 做一個 LINE Bot，約 2 週" required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="它解決什麼問題？" hint="描述這個點子想解決的核心問題">
+                <input type="text" value={riskForm.problem} onChange={(e) => updateRiskField("problem", e.target.value)} placeholder="例如：不知道每天要煮什麼" required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <button type="submit" disabled={riskLoading} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
-                {riskLoading ? <><Spinner />掃描中…</> : "開始風險掃描"}
+              <button type="button" onClick={handleRiskNext} disabled={!riskForm.idea?.trim() || !riskForm.targetUser?.trim() || !riskForm.problem?.trim()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
+                下一步：付費 49 元開始判定
               </button>
             </form>
           </section>
         )}
 
-        {/* ─── Risk Scan Error ─── */}
-        {riskError && (
-          <div className="mb-8 rounded-xl border border-red-light/20 bg-red-light/5 px-5 py-4 text-sm text-red-light"><span className="font-semibold">錯誤：</span>{riskError}</div>
-        )}
-
-        {/* ─── Risk Scan Result + Test Mode Banner ─── */}
-        {riskResult && (
-          <>
-            <section className="mb-4 rounded-2xl border border-yellow-light/20 bg-yellow-light/[0.04] p-6 backdrop-blur-sm sm:p-8">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-light/20 bg-yellow-light/10 px-3 py-1 text-xs font-medium text-yellow-light">{riskResult.riskArea}</div>
-              <p className="mb-2 text-sm leading-relaxed text-text-secondary">{riskResult.oneLineRisk}</p>
-              <p className="text-xs text-text-secondary/60">{riskResult.cta}</p>
-            </section>
-            {riskResult.oneLineRisk.startsWith("測試模式") && (
-              <div className="mb-4 rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
-                目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
-              </div>
-            )}
-          </>
+        {/* ─── Boundary Error ─── */}
+        {boundaryError && (
+          <div className="mb-8 rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-4 text-sm text-yellow-light">
+            {boundaryError.split("\n").map((line, i) => <p key={i} className={i > 0 ? "mt-2" : ""}>{line}</p>)}
+          </div>
         )}
 
         {/* ─── Payment Card ─── */}
-        {showPayment && !fullResult && (
+        {showPayment && !fullResult && !boundaryError && (
           <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">單次完整判定 49 元</div>
-            <p className="mb-4 text-sm leading-relaxed text-text-secondary">完成 6 題後，系統會根據需求、付費意願、替代方案、交付速度與維護負擔，判斷你的點子是紅燈、黃燈還是綠燈。</p>
-            <p className="mb-6 text-xs text-text-secondary/50">目前 v0.3 為測試版，付款流程暫以占位呈現。</p>
-            {/* TODO: 未來串接金流，付款成功後才開放完整判定。 */}
+            <p className="mb-4 text-sm leading-relaxed text-text-secondary">你已完成前 3 題。付款後請再補充 3 題，系統會根據你的點子、市場跡象、付費可能、交付速度與維護負擔，給出紅燈、黃燈或綠燈判定。</p>
+            <p className="mb-6 text-xs text-text-secondary/50">目前 v0.4-alpha 為測試版，付款流程暫以占位呈現。</p>
+            {/* TODO: 未來串接金流，付款成功後才開放完整判定與外部查詢。 */}
             <button onClick={handlePaymentClick} disabled={showFullForm} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-light to-orange-400 px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-              {showFullForm ? "已展開完整判定" : "付費 49 元，開始完整判定"}
+              {showFullForm ? "已展開完整判定" : "我已了解，開始補充完整判定資料"}
             </button>
           </section>
         )}
@@ -188,28 +195,28 @@ export default function Home() {
         {showFullForm && !fullResult && (
           <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
             <h2 className="mb-2 text-lg font-semibold text-white">完整判定</h2>
-            <p className="mb-6 text-sm text-text-secondary">填 6 題，取得正式紅黃綠燈結果。</p>
+            <p className="mb-6 text-sm text-text-secondary">已帶入風險掃描的 3 題，請再補充 3 題，取得正式紅黃綠燈結果。</p>
             <form onSubmit={handleFullSubmit} className="space-y-4">
               <Field label="你的點子是什麼？" hint="簡短描述你的創業或副業點子">
-                <input type="text" value={fullForm.idea} onChange={(e) => updateFullField("idea", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                <input type="text" value={fullForm.idea} onChange={(e) => updateFullField("idea", e.target.value)} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="它解決誰的什麼問題？" hint="目標使用者和他們的痛點">
-                <input type="text" value={fullForm.problem} onChange={(e) => updateFullField("problem", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="目標使用者是誰？" hint="描述你的目標族群">
+                <input type="text" value={fullForm.targetUser} onChange={(e) => updateFullField("targetUser", e.target.value)} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="如果不解決，使用者會損失什麼？" hint="痛點有多痛？不解決會怎樣？">
-                <input type="text" value={fullForm.loss} onChange={(e) => updateFullField("loss", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="它解決什麼問題？" hint="描述這個點子想解決的核心問題">
+                <input type="text" value={fullForm.problem} onChange={(e) => updateFullField("problem", e.target.value)} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="誰會付錢？為什麼願意付？" hint="付費對象和理由">
-                <input type="text" value={fullForm.payer} onChange={(e) => updateFullField("payer", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="你想怎麼收費？" hint="描述收費方式或商業模式">
+                <input type="text" value={fullForm.pricing} onChange={(e) => updateFullField("pricing", e.target.value)} required maxLength={400} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="使用者現在不用你的產品時，怎麼解決？" hint="目前的替代方案是什麼？">
-                <input type="text" value={fullForm.alternative} onChange={(e) => updateFullField("alternative", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="第一版你打算怎麼做？" hint="描述第一版的範圍">
+                <input type="text" value={fullForm.firstVersion} onChange={(e) => updateFullField("firstVersion", e.target.value)} required maxLength={400} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
-              <Field label="第一版你打算怎麼交付？大概要幾天？" hint="交付方式和預估時間">
-                <input type="text" value={fullForm.delivery} onChange={(e) => updateFullField("delivery", e.target.value)} required maxLength={500} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <Field label="你預估多久能完成？" hint="預估開發時間">
+                <input type="text" value={fullForm.buildTime} onChange={(e) => updateFullField("buildTime", e.target.value)} required maxLength={400} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
               </Field>
               <button type="submit" disabled={fullLoading} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
-                {fullLoading ? <><Spinner />判定中…</> : "送出判定"}
+                {fullLoading ? <><Spinner />判定中…</> : "送出完整判定"}
               </button>
             </form>
           </section>
@@ -228,66 +235,72 @@ export default function Home() {
               <div className={`mx-auto mb-4 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${lightConfig[fullResult.light].css}`}>
                 <span className={`inline-block h-2.5 w-2.5 rounded-full ${lightConfig[fullResult.light].dot}`} />{lightConfig[fullResult.light].label}
               </div>
-              <p className="mb-2 text-sm font-medium text-text-secondary/70">{fullResult.quadrant}</p>
               <h2 className="mb-2 text-xl font-bold text-white">{fullResult.title}</h2>
-              <p className="text-sm text-text-secondary">{fullResult.oneLineJudgement}</p>
+              <p className="text-sm text-white/80">{fullResult.oneLineJudgement}</p>
             </div>
+
+            {/* High risk disclaimer */}
+            {fullResult.isHighRisk && (
+              <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-4 text-xs leading-relaxed text-yellow-light/80">
+                此類點子涉及醫療、法律、金融或其他高風險場景。本工具只能做開工前的商業風險提醒，不構成法律、財務、醫療或合規建議。?
+              </div>
+            )}
 
             {/* Your answers */}
             <SectionCard title="你的本次回答摘要">
               <div className="space-y-3">
                 {[
                   { q: "你的點子是什麼？", a: fullForm.idea },
-                  { q: "它解決誰的什麼問題？", a: fullForm.problem },
-                  { q: "如果不解決，使用者會損失什麼？", a: fullForm.loss },
-                  { q: "誰會付錢？為什麼願意付？", a: fullForm.payer },
-                  { q: "使用者現在不用你的產品時，怎麼解決？", a: fullForm.alternative },
-                  { q: "第一版你打算怎麼交付？大概要幾天？", a: fullForm.delivery },
+                  { q: "目標使用者是誰？", a: fullForm.targetUser },
+                  { q: "它解決什麼問題？", a: fullForm.problem },
+                  { q: "你想怎麼收費？", a: fullForm.pricing },
+                  { q: "第一版你打算怎麼做？", a: fullForm.firstVersion },
+                  { q: "你預估多久能完成？", a: fullForm.buildTime },
                 ].map((item, i) => (
                   <div key={i} className="border-b border-white/[0.04] pb-2 last:border-0 last:pb-0">
                     <p className="text-xs font-medium text-white/50">{i + 1}. {item.q}</p>
-                    <p className="mt-0.5 text-sm text-text-secondary break-words">{item.a}</p>
+                    <p className="mt-0.5 text-sm text-white/90 break-words">{item.a}</p>
                   </div>
                 ))}
               </div>
             </SectionCard>
 
-            {/* Evidence levels */}
-            <SectionCard title="證據分級">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {Object.entries(fullResult.evidenceLevels).map(([key, level]) => {
-                  const info = EVIDENCE_LABELS[level] ?? EVIDENCE_LABELS["資訊不足"];
-                  const labelMap: Record<string, string> = { demand: "需求強度", payment: "付費意願", alternative: "替代方案", delivery: "交付速度", maintenance: "維護負擔" };
-                  return (
-                    <div key={key} className="flex items-center justify-between rounded-lg border border-white/[0.06] px-3 py-2">
-                      <span className="text-xs text-text-secondary">{labelMap[key] ?? key}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${info.klass}`}>{info.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
+            {/* Market signals */}
+            {fullResult.marketSignals && fullResult.marketSignals.length > 0 && (
+              <SectionCard title="根據填寫內容推估的市場跡象">
+                <ul className="space-y-2">
+                  {fullResult.marketSignals.map((s, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-white/80">
+                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-white/20" />{s}
+                    </li>
+                  ))}
+                </ul>
+              </SectionCard>
+            )}
 
-            {/* Reasons */}
-            <SectionCard title="判定原因">
-              <ul className="space-y-1.5">
-                {fullResult.reasons.map((r, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-text-secondary"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-white/20" />{r}</li>
-                ))}
-              </ul>
-            </SectionCard>
+            {/* 判定摘要 */}
+            {fullResult.quadrantSummary && (
+              <SectionCard title="判定摘要">
+                <p className="text-sm text-white/80">{fullResult.quadrantSummary.summary}</p>
+              </SectionCard>
+            )}
 
             {/* Biggest risk */}
             <SectionCard title="最大風險">
-              <p className="text-sm text-text-secondary">{fullResult.biggestRisk}</p>
+              <p className="text-sm text-white/80">{fullResult.biggestRisk}</p>
             </SectionCard>
 
-            {/* Test mode banner for full analysis */}
+            {/* Test mode banner */}
             {fullResult.oneLineJudgement.startsWith("測試模式") && (
               <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
                 目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
               </div>
             )}
+
+            {/* Responsibility disclaimer */}
+            <p className="text-xs leading-relaxed text-white/20 text-center">
+              ???????????????????????????????????
+            </p>
 
             {/* Feedback */}
             <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
@@ -315,7 +328,6 @@ export default function Home() {
                     <span className={`inline-block h-2 w-2 rounded-full ${lc.dot}`} />
                     <span className={`text-sm font-semibold ${lc.css.split(" ")[1]}`}>{lc.label}</span>
                   </div>
-                  <p className="mb-1 text-xs font-medium text-text-secondary/50">{c.quadrant}</p>
                   <h3 className="mb-1.5 text-sm font-semibold text-white">{c.title}</h3>
                   <p className="text-xs leading-relaxed text-text-secondary">{c.judgement}</p>
                 </div>
@@ -325,7 +337,7 @@ export default function Home() {
         </section>
 
         {/* ─── Footer ─── */}
-        <footer className="mt-16 text-center text-xs text-white/15">AI創業紅綠燈 v0.3 — 僅供參考，請自行驗證市場需求</footer>
+        <footer className="mt-16 text-center text-xs text-white/15">AI創業紅綠燈 v0.4-alpha — 僅供參考，請自行驗證市場需求</footer>
       </div>
     </div>
   );
