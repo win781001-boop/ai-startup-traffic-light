@@ -82,6 +82,40 @@ function isHighRiskIdea(text: string): boolean {
   return HIGH_RISK_KEYWORDS.some((kw) => text.toLowerCase().includes(kw.toLowerCase()));
 }
 
+// Low-information content check — catches filler/spam before AI call
+const MEANINGLESS_PATTERNS = [/^test$/i, /^測試$/, /^123$/, /^1+$/, /^哈哈$/, /^隨便$/, /^不知道$/, /^asdf$/i, /^\?+$/];
+
+function hasLowInformation(input: IdeaInput): boolean {
+  const fields = [input.idea, input.targetUser, input.problem, input.pricing, input.firstVersion, input.buildTime];
+  const t = fields.map(f => (f || "").trim());
+  const last3 = [input.pricing, input.firstVersion, input.buildTime].map(f => (f || "").trim());
+
+  // a. 5+ fields are only 1–2 characters
+  if (t.filter(f => f.length >= 1 && f.length <= 2).length >= 5) return true;
+
+  // b. 4+ fields are purely numeric
+  if (t.filter(f => f.length > 0 && /^\d+$/.test(f)).length >= 4) return true;
+
+  // c. 4+ non-empty fields are identical to each other
+  const nonEmpty = t.filter(f => f.length > 0);
+  if (nonEmpty.length >= 4 && new Set(nonEmpty).size === 1) return true;
+
+  // d. 4+ fields match meaningless filler patterns
+  if (t.filter(f => MEANINGLESS_PATTERNS.some(p => p.test(f))).length >= 4) return true;
+
+  // e. Total combined length across all 6 fields < 12 characters
+  if (t.reduce((s, f) => s + f.length, 0) < 12) return true;
+
+  // f. All 3 last fields (pricing / firstVersion / buildTime) are 1–2 chars each
+  if (last3.every(f => f.length >= 1 && f.length <= 2)) return true;
+
+  // g. 2+ of last 3 fields are low-info (purely numeric or single repeating character)
+  const _isLowLast = (s: string) => s.length > 0 && (/^\d+$/.test(s) || (s.length >= 2 && [...s].every(c => c === s[0])));
+  if (last3.filter(_isLowLast).length >= 2) return true;
+
+  return false;
+}
+
 function buildPrompt(input: IdeaInput): string {
   return `請判定以下點子：
 
@@ -208,6 +242,14 @@ export async function POST(request: Request) {
       return Response.json({
         error: "INVALID_IDEA",
         message: "這個輸入不像商業點子，無法判定。",
+      });
+    }
+
+    // Low-information check — prevents garbage/filler from reaching AI
+    if (hasLowInformation(body)) {
+      return Response.json({
+        error: "INVALID_IDEA",
+        message: "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。",
       });
     }
 
