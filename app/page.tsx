@@ -19,10 +19,23 @@ const NON_BIZ_KEYWORDS = [
   "盜版", "破解", "違法", "危險",
 ];
 
+// 商業點子語境指示詞 — 包含這些詞應優先視為可判定點子
+const BIZ_CONTEXT_INDICATORS = [
+  "我想做", "想做", "想要做", "打算做",
+  "網站", "App", "工具", "服務", "平台", "產品",
+  "副業", "創業", "收費", "客戶", "使用者", "用戶",
+];
+
+function hasBizContext(text: string): boolean {
+  return BIZ_CONTEXT_INDICATORS.some((indicator) => text.includes(indicator));
+}
+
 function isLikelyNonBiz(text: string): boolean {
   // 太短或看起來像命令句
   if (text.length < 8 && /^(幫我|請你|可以幫我|告訴我)/.test(text)) return true;
-  // 命中關鍵字
+  // 如果包含商業點子語境，優先放行（非商業關鍵字檢查不蓋過商業語境）
+  if (hasBizContext(text)) return false;
+  // 命中非商業關鍵字
   return NON_BIZ_KEYWORDS.some((kw) => text.includes(kw));
 }
 
