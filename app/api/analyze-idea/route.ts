@@ -1,4 +1,4 @@
-﻿export interface IdeaInput {
+export interface IdeaInput {
   idea: string;
   targetUser: string;
   problem: string;
@@ -291,6 +291,9 @@ export async function POST(request: Request) {
     if (!res.ok) {
       const errorBody = await res.text();
       console.error("OpenAI API error:", res.status, errorBody);
+      if (res.status === 401) {
+        return Response.json({ error: "AI 服務認證失敗，請確認 OPENAI_API_KEY、OPENAI_BASE_URL 與 OPENAI_MODEL 環境變數是否正確設定。" }, { status: 502 });
+      }
       return Response.json({ error: "AI 判定服務暫時無法使用，請稍後再試。" }, { status: 502 });
     }
 
