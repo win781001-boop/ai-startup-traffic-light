@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     const light = d?.light as string;
     if (light && ["red", "yellow", "green"].includes(light)) {
       await recordStore.usePayment(paymentId);
-      const u = await recordStore.updateAnalysis(analysis.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
+      const u = await recordStore.updateAnalysis(analysis.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, used: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
       return Response.json({ ...buildRes(u!, true), analysisResult: analyzeData as AnalysisResult });
     }
 
