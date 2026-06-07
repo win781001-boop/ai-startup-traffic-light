@@ -168,7 +168,8 @@ export async function POST(request: Request) {
     }
 
     let analyzeData: unknown;
-    try { analyzeData = await analyzeRes.json(); } catch { return sysErr("系統回傳內容無法解析。"); }
+    const rawText = await analyzeRes.text();
+    try { analyzeData = JSON.parse(rawText); } catch { console.error('[submit-analysis] analyze-idea response not parseable as JSON — status=' + analyzeRes.status + ' statusText=' + analyzeRes.statusText + ' contentType=' + (analyzeRes.headers.get('content-type') || 'none') + ' bodyStart=' + rawText.substring(0, 2000)); return sysErr('系統回傳內容無法解析。'); }
 
     const d = analyzeData as Record<string, unknown>;
 
