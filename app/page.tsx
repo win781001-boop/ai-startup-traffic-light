@@ -263,7 +263,7 @@ export default function Home() {
 
   async function handleFeedback(value: FeedbackValue) {
     setFeedbackSent(value);
-    try { await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedback: value }) }); } catch { /* silent */ }
+    try { await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedback: value, analysisId: analysisData?.analysisId, paymentId: analysisData?.paymentId }) }); } catch { /* silent */ }
   }
 
   function renderAnalysisMeta() {

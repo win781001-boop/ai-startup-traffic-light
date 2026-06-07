@@ -53,3 +53,10 @@ model Analysis {
   payment    Payment    @relation(fields: [paymentId], references: [id])
 }
 
+model Feedback {
+  id         String   @id @default(cuid())
+  analysisId String
+  paymentId  String
+  value      String
+  createdAt  DateTime @default(now())
+}

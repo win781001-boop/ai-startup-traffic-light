@@ -37,6 +37,10 @@ export interface Analysis {
   createdAt: string;
   completedAt: string | null;
 }
-
-
-
+export interface Feedback {
+  id: string;
+  analysisId: string;
+  paymentId: string;
+  value: "準" | "普通" | "不準";
+  createdAt: string;
+}

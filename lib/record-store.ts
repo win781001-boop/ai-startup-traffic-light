@@ -1,5 +1,5 @@
-import { prisma } from "./prisma";
-import type { Payment, Analysis } from "./types";
+﻿import { prisma } from "./prisma";
+import type { Payment, Analysis, Feedback } from "./types";
 
 function genId(prefix: string): string {
   const n = Date.now();
@@ -155,6 +155,17 @@ export const recordStore = {
       createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
     };
   },
+
+  async saveFeedback(analysisId: string, paymentId: string, value: string): Promise<Feedback> {
+    const feedback = await prisma.feedback.create({
+      data: { analysisId, paymentId, value },
+    });
+    return {
+      id: feedback.id,
+      analysisId: feedback.analysisId,
+      paymentId: feedback.paymentId,
+      value: feedback.value as Feedback["value"],
+      createdAt: feedback.createdAt.toISOString(),
+    };
+  },
 };
-
-
