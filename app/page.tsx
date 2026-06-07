@@ -343,12 +343,12 @@ export default function Home() {
         
         {analysisData && analysisData.status === "needs_revision" && (
           <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
-            <p className="mb-3 text-center text-sm text-text-secondary/60">????????????????????</p>
+            <p className="mb-3 text-center text-sm text-text-secondary/60">您可以修改回答後重新送出，無需重新付款。</p>
             <button
               onClick={() => { setAnalysisData(null); setAnalysisResult(null); setFullError(null); }}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              ???????
+              修改並重新送出
             </button>
           </div>
         )}
