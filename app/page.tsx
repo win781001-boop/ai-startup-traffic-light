@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
@@ -341,23 +341,36 @@ export default function Home() {
         </SectionCard>
 
         <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 text-center backdrop-blur-sm">
-          <p className="text-sm text-text-secondary/60">因本次判定未產生紅黃綠燈，不提供下載正式判定報告。</p>
-        
-        {analysisData && analysisData.status === "needs_revision" && (
-          <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
-            <p className="mb-3 text-center text-sm text-text-secondary/60">您可以修改回答後重新送出，無需重新付款。</p>
+          <p className="text-sm text-text-secondary/60">本次判定未產生紅黃綠燈，暫不提供下載正式判定報告。</p>
+        </div>
+
+        {analysisData && analysisData.status === "needs_revision" && analysisData.remainingAttempts !== undefined && analysisData.remainingAttempts > 0 && (
+        <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/50">請補充內容後重新送出</h3>
+          <div className="space-y-3">
+            <p className="text-center text-sm text-text-secondary/60">你可以修改回答後重新送出，無需重新付款。本次付款剩餘修改次數：{analysisData.remainingAttempts} 次。</p>
             <button
               onClick={() => { setAnalysisData(null); setAnalysisResult(null); setFullError(null); }}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              修改並重新送出
+              修改回答並重新判定
             </button>
           </div>
+        </div>
         )}
-              </div>
+
+        {(analysisData && analysisData.status === "attempts_exhausted") || (analysisData && analysisData.status === "needs_revision" && analysisData.remainingAttempts !== undefined && analysisData.remainingAttempts <= 0) ? (
+        <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/50">本次修改次數已用完</h3>
+          <div className="space-y-3">
+            <p className="text-center text-sm text-text-secondary/60">本次付款的修改機會已用完，無法再重新送出。請重新開始一次新的判定。</p>
+          </div>
+        </div>
+        ) : null}
       </section>
     );
   }
+
 
   function renderSystemErrorResult() {
     if (!analysisData || analysisData.status !== "failed_system_error") return null;
