@@ -1,4 +1,4 @@
-﻿import { recordStore } from "@/lib/record-store";
+import { recordStore } from "@/lib/record-store";
 import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
 
@@ -51,12 +51,14 @@ export interface SubmitAnalysisResponse {
   createdAt: string;
   completedAt: string | null;
   errorReason: string | null;
+  remainingAttempts?: number;
   analysisResult?: AnalysisResult | null;
 }
 
 function buildRes(
   a: Analysis,
   paymentUsed: boolean,
+  remainingAttempts?: number,
   analysisResult?: AnalysisResult | null
 ): SubmitAnalysisResponse {
   return {
@@ -69,6 +71,7 @@ function buildRes(
     createdAt: a.createdAt,
     completedAt: a.completedAt,
     errorReason: a.errorReason,
+    remainingAttempts,
     analysisResult: analysisResult ?? null,
   };
 }
@@ -96,26 +99,47 @@ export async function POST(request: Request) {
     const combinedText = `${idea} ${targetUser} ${problem} ${pricing} ${firstVersion} ${buildTime}`;
     const inputObj: IdeaInput = { idea, targetUser, problem, pricing, firstVersion, buildTime };
 
-    // Create analysis record
-        // Validate analysis
+    // Validate analysis
     const analysis = await recordStore.getAnalysis(analysisId);
     if (!analysis) return Response.json({ error: "分析不存在。" }, { status: 404 });
     if (analysis.paymentId !== paymentId) return Response.json({ error: "分析與付款不符。" }, { status: 400 });
-    if (analysis.used) return Response.json({ error: "此分析已使用過。" }, { status: 400 });
 
-    // Update placeholder Submission with real inputs
-    const updatedAnalysis = await recordStore.updateAnalysisInputs(analysisId, inputs);
-
-    // ─── Helper: rejection (payment used) ───
-    async function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
-      const u = await recordStore.updateAnalysis(analysis!.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
-      return Response.json(buildRes(u!, false));
+    // ─── Attempt limit checks (before any AI call) ───
+    if (analysis.used) {
+      return Response.json({ error: "此分析已產生正式判定，無法再次送出。" }, { status: 400 });
     }
 
-    // ─── Helper: system error (payment NOT used) ───
+    if (analysis.attemptCount >= analysis.maxAttempts) {
+      // Record exhausted state
+      await recordStore.updateAnalysis(analysisId, {
+        status: "attempts_exhausted" as Analysis["status"],
+        hasSignal: false, used: false,
+        completedAt: new Date().toISOString(),
+        errorReason: "已達判定次數上限",
+      });
+      const updated = await recordStore.getAnalysis(analysisId);
+      return Response.json(buildRes(updated!, false, 0));
+    }
+
+    // Update placeholder Submission with real inputs
+    await recordStore.updateAnalysisInputs(analysisId, inputs);
+
+    // ─── Increment attempt count BEFORE validation / AI call ───
+    const newAttemptCount = analysis.attemptCount + 1;
+    await recordStore.updateAnalysis(analysisId, { attemptCount: newAttemptCount, status: "submitted" });
+    const attemptAnalysis = await recordStore.getAnalysis(analysisId);
+    const remainingAttempts = attemptAnalysis!.maxAttempts - attemptAnalysis!.attemptCount;
+
+    // ─── Helper: rejection (payment NOT used, attempt counted) ───
+    async function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
+      const u = await recordStore.updateAnalysis(analysis!.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
+      return Response.json(buildRes(u!, false, remainingAttempts));
+    }
+
+    // ─── Helper: system error (payment NOT used, attempt counted) ───
     async function sysErr(reason: string, aiRaw?: string | null) {
       const u = await recordStore.updateAnalysis(analysis!.id, { status: "failed_system_error", hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
-      return Response.json(buildRes(u!, false));
+      return Response.json(buildRes(u!, false, remainingAttempts));
     }
 
     // 1. Illegal / grey-area
@@ -148,7 +172,7 @@ export async function POST(request: Request) {
 
     const d = analyzeData as Record<string, unknown>;
 
-    // 4a. 400 = rejection by analyze-idea (payment used)
+    // 4a. 400 = rejection by analyze-idea (payment NOT used, attempt counted)
     if (analyzeRes.status === 400) {
       const code = d?.error as string;
       const msg = (d?.message as string) || code || "無法判定";
@@ -157,15 +181,15 @@ export async function POST(request: Request) {
       return reject("needs_revision", msg, JSON.stringify(analyzeData));
     }
 
-    // 4b. 502/500 = system error (payment NOT used)
+    // 4b. 502/500 = system error (payment NOT used, attempt counted)
     if (!analyzeRes.ok) return sysErr((d?.error as string) || "AI 判定服務暫時無法使用", JSON.stringify(analyzeData));
 
-    // 5. Success
+    // 5. Success: used = true, hasSignal = true
     const light = d?.light as string;
     if (light && ["red", "yellow", "green"].includes(light)) {
       await recordStore.usePayment(paymentId);
       const u = await recordStore.updateAnalysis(analysis!.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, used: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
-      return Response.json({ ...buildRes(u!, true), analysisResult: analyzeData as AnalysisResult });
+      return Response.json({ ...buildRes(u!, true, remainingAttempts), analysisResult: analyzeData as AnalysisResult });
     }
 
     // Valid HTTP 200 but no light → system error

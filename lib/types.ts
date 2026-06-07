@@ -27,11 +27,16 @@ export interface Analysis {
     | "rejected_invalid_idea"
     | "rejected_low_information"
     | "rejected_unsupported"
-    | "failed_system_error";
+    | "failed_system_error" | "attempts_exhausted";
   signal: "red" | "yellow" | "green" | null;
   hasSignal: boolean;
   aiRawResponse: string | null;
   errorReason: string | null;
+  attemptCount: number;
+  maxAttempts: number;
   createdAt: string;
   completedAt: string | null;
 }
+
+
+

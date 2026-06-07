@@ -62,6 +62,7 @@ const STATUS_LABEL: Record<string, string> = {
   rejected_low_information: "資訊不足",
   rejected_unsupported: "不支援的內容",
   failed_system_error: "系統錯誤",
+  attempts_exhausted: "已達判定次數上限",
 };
 
 const lightConfig: Record<string, { label: string; dot: string; css: string; border: string }> = {
@@ -95,6 +96,7 @@ export default function Home() {
 
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
+  const [remainingAttempts, setRemainingAttempts] = useState<number>(3);
 
   function updateRiskField(key: string, value: string) {
     setRiskForm((prev) => ({ ...prev, [key]: value }));
@@ -567,7 +569,7 @@ export default function Home() {
         )}
 
         {/* Result: Rejected */}
-        {analysisData && !analysisData.hasSignal && (analysisData.status === "needs_revision" || analysisData.status.startsWith("rejected")) && renderRejectedResult()}
+        {analysisData && !analysisData.hasSignal && (analysisData.status === "needs_revision" || analysisData.status === "attempts_exhausted" || analysisData.status.startsWith("rejected")) && renderRejectedResult()}
 
         {/* Result: System Error */}
         {analysisData && analysisData.status === "failed_system_error" && renderSystemErrorResult()}

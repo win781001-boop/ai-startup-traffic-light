@@ -46,7 +46,10 @@ model Analysis {
   errorReason   String?
   createdAt     DateTime  @default(now())
   completedAt   DateTime?
+  attemptCount  Int      @default(0)
+  maxAttempts   Int      @default(3)
 
   submission Submission @relation(fields: [submissionId], references: [id])
   payment    Payment    @relation(fields: [paymentId], references: [id])
 }
+

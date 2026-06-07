@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --bg-primary: #0f0f14;
@@ -11,6 +11,7 @@
   --yellow-light: #ffb347;
   --yellow-glow: rgba(255, 179, 71, 0.3);
   --green-light: #33d685;
+  --blue-light: #5b9aff;
   --green-glow: rgba(51, 214, 133, 0.3);
   --border-subtle: rgba(255, 255, 255, 0.06);
 }
@@ -24,6 +25,7 @@
   --color-red-light: var(--red-light);
   --color-yellow-light: var(--yellow-light);
   --color-green-light: var(--green-light);
+  --color-blue-light: var(--blue-light);
   --font-sans: var(--font-geist-sans), "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), "Noto Sans Mono", monospace;
 }

@@ -22,7 +22,7 @@ export const recordStore = {
         data: { id: submissionId, paymentId, status: "pending", idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "", createdAt: now },
       });
       const a = await tx.analysis.create({
-        data: { id: analysisId, submissionId, paymentId, status: "pending", used: false, signal: null, hasSignal: false, aiRawResponse: null, errorReason: null, createdAt: now, completedAt: null },
+        data: { id: analysisId, submissionId, paymentId, status: "pending", used: false, signal: null, hasSignal: false, aiRawResponse: null, errorReason: null, attemptCount: 0, maxAttempts: 3, createdAt: now, completedAt: null },
       });
       return { p, a };
     });
@@ -38,6 +38,7 @@ export const recordStore = {
         inputs: { idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "" },
         used: result.a.used, status: result.a.status as Analysis["status"],
         signal: result.a.signal as Analysis["signal"], hasSignal: result.a.hasSignal,
+        attemptCount: result.a.attemptCount, maxAttempts: result.a.maxAttempts,
         aiRawResponse: result.a.aiRawResponse, errorReason: result.a.errorReason,
         createdAt: result.a.createdAt.toISOString(), completedAt: result.a.completedAt?.toISOString() ?? null,
       },
@@ -91,12 +92,13 @@ export const recordStore = {
       id: existing.id, paymentId: existing.paymentId, inputs,
       used: existing.used, status: existing.status as Analysis["status"],
       signal: existing.signal as Analysis["signal"], hasSignal: existing.hasSignal,
+      attemptCount: existing.attemptCount, maxAttempts: existing.maxAttempts,
       aiRawResponse: existing.aiRawResponse, errorReason: existing.errorReason,
       createdAt: existing.createdAt.toISOString(), completedAt: existing.completedAt?.toISOString() ?? null,
     };
   },
 
-  async updateAnalysis(id: string, updates: Partial<Pick<Analysis, "status" | "signal" | "hasSignal" | "aiRawResponse" | "errorReason" | "completedAt" | "used">>): Promise<Analysis | null> {
+  async updateAnalysis(id: string, updates: Partial<Pick<Analysis, "status" | "signal" | "hasSignal" | "aiRawResponse" | "errorReason" | "completedAt" | "used" | "attemptCount">>): Promise<Analysis | null> {
     const existing = await prisma.analysis.findUnique({ where: { id }, include: { submission: true } });
     if (!existing) return null;
     const data: Record<string, unknown> = {};
@@ -107,6 +109,7 @@ export const recordStore = {
     if (updates.errorReason !== undefined) data.errorReason = updates.errorReason;
     if (updates.completedAt !== undefined) data.completedAt = updates.completedAt ? new Date(updates.completedAt) : null;
     if (updates.used !== undefined) data.used = updates.used;
+    if (updates.attemptCount !== undefined) data.attemptCount = updates.attemptCount;
     const updated = await prisma.analysis.update({ where: { id }, data, include: { submission: true } });
     return {
       id: updated.id, paymentId: updated.paymentId,
@@ -115,6 +118,7 @@ export const recordStore = {
         firstVersion: updated.submission.firstVersion, buildTime: updated.submission.buildTime },
       used: updated.used, status: updated.status as Analysis["status"],
       signal: updated.signal as Analysis["signal"], hasSignal: updated.hasSignal,
+      attemptCount: updated.attemptCount, maxAttempts: updated.maxAttempts,
       aiRawResponse: updated.aiRawResponse, errorReason: updated.errorReason,
       createdAt: updated.createdAt.toISOString(), completedAt: updated.completedAt?.toISOString() ?? null,
     };
@@ -130,6 +134,7 @@ export const recordStore = {
         firstVersion: a.submission.firstVersion, buildTime: a.submission.buildTime },
       used: a.used, status: a.status as Analysis["status"],
       signal: a.signal as Analysis["signal"], hasSignal: a.hasSignal,
+      attemptCount: a.attemptCount, maxAttempts: a.maxAttempts,
       aiRawResponse: a.aiRawResponse, errorReason: a.errorReason,
       createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
     };
@@ -145,8 +150,11 @@ export const recordStore = {
         firstVersion: a.submission.firstVersion, buildTime: a.submission.buildTime },
       used: a.used, status: a.status as Analysis["status"],
       signal: a.signal as Analysis["signal"], hasSignal: a.hasSignal,
+      attemptCount: a.attemptCount, maxAttempts: a.maxAttempts,
       aiRawResponse: a.aiRawResponse, errorReason: a.errorReason,
       createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
     };
   },
 };
+
+
