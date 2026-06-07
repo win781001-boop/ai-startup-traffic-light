@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     // Validate payment
-    const payment = recordStore.getPayment(paymentId);
+    const payment = await recordStore.getPayment(paymentId);
     if (!payment) return Response.json({ error: "付款不存在。" }, { status: 404 });
     if (payment.used) return Response.json({ error: "此付款已使用過。" }, { status: 400 });
 
@@ -95,18 +95,18 @@ export async function POST(request: Request) {
     const inputObj: IdeaInput = { idea, targetUser, problem, pricing, firstVersion, buildTime };
 
     // Create analysis record
-    const analysis = recordStore.createAnalysis({ paymentId, inputs });
+    const analysis = await recordStore.createAnalysis({ paymentId, inputs });
 
     // ─── Helper: rejection (payment used) ───
-    function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
-      recordStore.usePayment(paymentId);
-      const u = recordStore.updateAnalysis(analysis.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null });
+    async function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
+      await recordStore.usePayment(paymentId);
+      const u = await recordStore.updateAnalysis(analysis.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null });
       return Response.json(buildRes(u!, true));
     }
 
     // ─── Helper: system error (payment NOT used) ───
-    function sysErr(reason: string, aiRaw?: string | null) {
-      const u = recordStore.updateAnalysis(analysis.id, { status: "failed_system_error", hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null });
+    async function sysErr(reason: string, aiRaw?: string | null) {
+      const u = await recordStore.updateAnalysis(analysis.id, { status: "failed_system_error", hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null });
       return Response.json(buildRes(u!, false));
     }
 
@@ -155,8 +155,8 @@ export async function POST(request: Request) {
     // 5. Success
     const light = d?.light as string;
     if (light && ["red", "yellow", "green"].includes(light)) {
-      recordStore.usePayment(paymentId);
-      const u = recordStore.updateAnalysis(analysis.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
+      await recordStore.usePayment(paymentId);
+      const u = await recordStore.updateAnalysis(analysis.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
       return Response.json({ ...buildRes(u!, true), analysisResult: analyzeData as AnalysisResult });
     }
 

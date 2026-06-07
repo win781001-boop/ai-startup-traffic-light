@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Payment {
+  id        String   @id
+  status    String   @default("created")
+  used      Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  paidAt    DateTime?
+
+  submissions Submission[]
+  analyses    Analysis[]
+}
+
+model Submission {
+  id           String   @id
+  paymentId    String
+  status       String   @default("submitted")
+  idea         String
+  targetUser   String
+  problem      String
+  pricing      String
+  firstVersion String
+  buildTime    String
+  createdAt    DateTime @default(now())
+
+  payment  Payment   @relation(fields: [paymentId], references: [id])
+  analysis Analysis?
+}
+
+model Analysis {
+  id            String    @id
+  submissionId  String    @unique
+  paymentId     String
+  status        String    @default("submitted")
+  used          Boolean   @default(false)
+  signal        String?
+  hasSignal     Boolean   @default(false)
+  aiRawResponse String?
+  errorReason   String?
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  submission Submission @relation(fields: [submissionId], references: [id])
+  payment    Payment    @relation(fields: [paymentId], references: [id])
+}

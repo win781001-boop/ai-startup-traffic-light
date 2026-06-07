@@ -18,6 +18,7 @@ export interface Analysis {
     firstVersion: string;
     buildTime: string;
   };
+  used: boolean;
   status:
     | "submitted"
     | "completed"

@@ -6,6 +6,6 @@ export interface CreatePaymentResponse {
 }
 
 export async function POST() {
-  const payment = recordStore.createPayment();
+  const payment = await recordStore.createPayment();
   return Response.json({ payment } satisfies CreatePaymentResponse);
 }
