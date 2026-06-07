@@ -1,11 +1,11 @@
-﻿import { recordStore } from "@/lib/record-store";
-import type { Payment } from "@/lib/types";
+import { recordStore } from "@/lib/record-store";
 
 export interface CreatePaymentResponse {
-  payment: Payment;
+  payment: { id: string; status: string; used: boolean; usedAt: string | null; createdAt: string; paidAt: string | null };
+  analysisId: string;
 }
 
 export async function POST() {
-  const payment = await recordStore.createPayment();
-  return Response.json({ payment } satisfies CreatePaymentResponse);
+  const { payment, analysis } = await recordStore.createPayment();
+  return Response.json({ payment, analysisId: analysis.id });
 }

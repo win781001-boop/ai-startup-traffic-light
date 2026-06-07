@@ -78,6 +78,9 @@ export default function Home() {
   // Payment state
   const [showPayment, setShowPayment] = useState(false);
   const [paymentData, setPaymentData] = useState<{ id: string; createdAt: string } | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Full assessment state
@@ -99,6 +102,8 @@ export default function Home() {
     setShowPayment(false);
     setShowFullForm(false);
     setPaymentData(null);
+    setAnalysisId(null);
+    setPaymentConfirmed(false);
     setAnalysisData(null);
     setAnalysisResult(null);
     setFullError(null);
@@ -125,6 +130,25 @@ export default function Home() {
     setShowPayment(true);
   }
 
+  async function handleConfirmPayment() {
+    if (!paymentData || paymentConfirmed) return;
+    setConfirmLoading(true);
+    try {
+      const res = await fetch("/api/confirm-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId: paymentData.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFullError(data.error || "付款確認失敗"); return; }
+      setPaymentConfirmed(true);
+      setShowFullForm(true);
+      setFullForm((prev) => ({ ...prev, idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
+    } catch {
+      setFullError("無法確認付款，請稍後再試。");
+    } finally { setConfirmLoading(false); }
+  }
+
   async function handlePaymentClick() {
     if (paymentData) return;
     setPaymentLoading(true);
@@ -133,7 +157,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) { setFullError(data.error || "付款建立失敗"); return; }
       setPaymentData(data.payment);
-      setShowFullForm(true);
+      setAnalysisId(data.analysisId);
       setFullForm((prev) => ({ ...prev, idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
     } catch {
       setFullError("無法建立付款，請稍後再試。");
@@ -148,7 +172,7 @@ export default function Home() {
       const res = await fetch("/api/submit-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId: paymentData.id, ...fullForm }),
+        body: JSON.stringify({ paymentId: paymentData.id, analysisId, ...fullForm }),
       });
       const data = await res.json();
       if (!res.ok) { setFullError(data.error || "提交失敗"); return; }
@@ -316,7 +340,19 @@ export default function Home() {
 
         <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 text-center backdrop-blur-sm">
           <p className="text-sm text-text-secondary/60">因本次判定未產生紅黃綠燈，不提供下載正式判定報告。</p>
-        </div>
+        
+        {analysisData && analysisData.status === "needs_revision" && (
+          <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+            <p className="mb-3 text-center text-sm text-text-secondary/60">????????????????????</p>
+            <button
+              onClick={() => { setAnalysisData(null); setAnalysisResult(null); setFullError(null); }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              ???????
+            </button>
+          </div>
+        )}
+              </div>
       </section>
     );
   }
@@ -445,7 +481,7 @@ export default function Home() {
         )}
 
         {/* Payment Card */}
-        {showPayment && !paymentData && !analysisData && !boundaryError && (
+        {showPayment && !paymentData && !paymentConfirmed && !analysisData && !boundaryError && (
           <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">單次完整判定 49 元</div>
             <p className="mb-4 text-sm leading-relaxed text-text-secondary">你已完成前 3 題。付款後請再補充 3 題，系統會根據你的點子、市場跡象、付費可能、交付速度與維護負擔，給出紅燈、黃燈或綠燈判定。</p>
@@ -457,16 +493,37 @@ export default function Home() {
         )}
 
         {/* Payment Created Banner */}
-        {paymentData && !analysisData && (
+                {paymentData && !paymentConfirmed && !analysisData && (
+          <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">
+              單次完整判定 49 元
+            </div>
+            <p className="mb-4 text-sm leading-relaxed text-text-secondary">
+              點擊下方按鈕模擬付款，確認後即可開始填寫完整判定資料。
+            </p>
+            <p className="mb-6 text-xs text-text-secondary/50">
+              付款編號：{paymentData.id}
+            </p>
+            <button
+              onClick={handleConfirmPayment}
+              disabled={confirmLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-light to-orange-400 px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {confirmLoading ? <><Spinner />付款確認中…</> : "確認付款 49 元"}
+            </button>
+          </section>
+        )}
+
+        {paymentConfirmed && !analysisData && (
           <div className="mb-6 rounded-xl border border-green-light/20 bg-green-light/[0.04] px-5 py-3 text-sm text-green-light">
             <p className="font-semibold">付款成立</p>
-            <p className="mt-1 text-xs text-green-light/70">付款編號：{paymentData.id}</p>
-            <p className="text-xs text-green-light/70">付款時間：{formatTime(paymentData.createdAt)}</p>
+            <p className="mt-1 text-xs text-green-light/70">付款編號：{paymentData!.id}</p>
+            <p className="text-xs text-green-light/70">付款時間：{formatTime(paymentData!.createdAt)}</p>
           </div>
         )}
 
         {/* Payment Disclaimer */}
-        {paymentData && !analysisData && (
+        {paymentConfirmed && !analysisData && (
           <div className="mb-6 rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-4 text-xs leading-relaxed text-yellow-light/80">
             <p className="font-semibold text-yellow-light text-sm mb-1">使用條款提醒</p>
             <p>本工具只判斷創業、副業、產品、服務、網站、App、AI 工具、電商、內容型產品等可變現商業點子。付款後送出正式判定，即視為使用一次。若送出的內容不是商業點子、資訊不足、亂填、查詢型任務，系統仍會保留提交紀錄，且本次付款可能視為已使用。</p>
@@ -474,7 +531,7 @@ export default function Home() {
         )}
 
         {/* Full Assessment Form */}
-        {showFullForm && paymentData && !analysisData && (
+        {showFullForm && paymentConfirmed && !analysisData && (
           <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
             <h2 className="mb-2 text-lg font-semibold text-white">完整判定</h2>
             <p className="mb-6 text-sm text-text-secondary">已帶入風險掃描的 3 題，請再補充 3 題，取得正式紅黃綠燈結果。</p>
@@ -510,7 +567,7 @@ export default function Home() {
         )}
 
         {/* Result: Rejected */}
-        {analysisData && !analysisData.hasSignal && analysisData.status.startsWith("rejected") && renderRejectedResult()}
+        {analysisData && !analysisData.hasSignal && (analysisData.status === "needs_revision" || analysisData.status.startsWith("rejected")) && renderRejectedResult()}
 
         {/* Result: System Error */}
         {analysisData && analysisData.status === "failed_system_error" && renderSystemErrorResult()}

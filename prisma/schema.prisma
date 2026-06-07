@@ -8,7 +8,7 @@ datasource db {
 
 model Payment {
   id        String   @id
-  status    String   @default("created")
+  status    String   @default("pending")
   used      Boolean  @default(false)
   usedAt    DateTime?
   createdAt DateTime @default(now())

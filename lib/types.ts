@@ -1,6 +1,6 @@
-﻿export interface Payment {
+export interface Payment {
   id: string;
-  status: "created" | "paid" | "failed" | "refunded";
+  status: "pending" | "paid" | "failed" | "expired";
   used: boolean;
   usedAt: string | null;
   createdAt: string;
@@ -20,8 +20,10 @@ export interface Analysis {
   };
   used: boolean;
   status:
+    | "pending"
     | "submitted"
     | "completed"
+    | "needs_revision"
     | "rejected_invalid_idea"
     | "rejected_low_information"
     | "rejected_unsupported"

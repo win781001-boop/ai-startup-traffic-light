@@ -76,11 +76,13 @@ function buildRes(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { paymentId, idea, targetUser, problem, pricing, firstVersion, buildTime } = body as {
+    const { paymentId, analysisId, idea, targetUser, problem, pricing, firstVersion, buildTime } = body as {
       paymentId: string;
+      analysisId: string;
     } & IdeaInput;
 
     if (!paymentId) return Response.json({ error: "缺少付款編號。" }, { status: 400 });
+    if (!analysisId) return Response.json({ error: "缺少分析編號。" }, { status: 400 });
     if (!idea?.trim() || !targetUser?.trim() || !problem?.trim() || !pricing?.trim() || !firstVersion?.trim() || !buildTime?.trim()) {
       return Response.json({ error: "請填寫所有欄位。" }, { status: 400 });
     }
@@ -88,36 +90,42 @@ export async function POST(request: Request) {
     // Validate payment
     const payment = await recordStore.getPayment(paymentId);
     if (!payment) return Response.json({ error: "付款不存在。" }, { status: 404 });
-    if (payment.used) return Response.json({ error: "此付款已使用過。" }, { status: 400 });
+    if (payment.status !== "paid") return Response.json({ error: "此付款尚未完成確認，請先完成付款。" }, { status: 400 });
 
     const inputs: Analysis["inputs"] = { idea, targetUser, problem, pricing, firstVersion, buildTime };
     const combinedText = `${idea} ${targetUser} ${problem} ${pricing} ${firstVersion} ${buildTime}`;
     const inputObj: IdeaInput = { idea, targetUser, problem, pricing, firstVersion, buildTime };
 
     // Create analysis record
-    const analysis = await recordStore.createAnalysis({ paymentId, inputs });
+        // Validate analysis
+    const analysis = await recordStore.getAnalysis(analysisId);
+    if (!analysis) return Response.json({ error: "分析不存在。" }, { status: 404 });
+    if (analysis.paymentId !== paymentId) return Response.json({ error: "分析與付款不符。" }, { status: 400 });
+    if (analysis.used) return Response.json({ error: "此分析已使用過。" }, { status: 400 });
+
+    // Update placeholder Submission with real inputs
+    const updatedAnalysis = await recordStore.updateAnalysisInputs(analysisId, inputs);
 
     // ─── Helper: rejection (payment used) ───
     async function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
-      await recordStore.usePayment(paymentId);
-      const u = await recordStore.updateAnalysis(analysis.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null });
-      return Response.json(buildRes(u!, true));
+      const u = await recordStore.updateAnalysis(analysis!.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
+      return Response.json(buildRes(u!, false));
     }
 
     // ─── Helper: system error (payment NOT used) ───
     async function sysErr(reason: string, aiRaw?: string | null) {
-      const u = await recordStore.updateAnalysis(analysis.id, { status: "failed_system_error", hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null });
+      const u = await recordStore.updateAnalysis(analysis!.id, { status: "failed_system_error", hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
       return Response.json(buildRes(u!, false));
     }
 
     // 1. Illegal / grey-area
-    if (isIllegalIdea(combinedText)) return reject("rejected_unsupported", "這個點子涉及不支援的內容，無法判定。");
+    if (isIllegalIdea(combinedText)) return reject("needs_revision", "這個點子涉及不支援的內容，無法判定。");
 
     // 2. Idea relevance
-    if (!isIdeaRelevant(combinedText)) return reject("rejected_invalid_idea", "這個輸入不像商業點子，無法判定。");
+    if (!isIdeaRelevant(combinedText)) return reject("needs_revision", "這個輸入不像商業點子，無法判定。");
 
     // 3. Low information
-    if (hasLowInformation(inputObj)) return reject("rejected_low_information", "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。");
+    if (hasLowInformation(inputObj)) return reject("needs_revision", "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。");
 
     // 4. Call analyze-idea internally
     let analyzeRes: Response;
@@ -144,9 +152,9 @@ export async function POST(request: Request) {
     if (analyzeRes.status === 400) {
       const code = d?.error as string;
       const msg = (d?.message as string) || code || "無法判定";
-      if (code === "UNSUPPORTED_IDEA") return reject("rejected_unsupported", msg, JSON.stringify(analyzeData));
-      if (code === "INVALID_IDEA") return reject(msg.includes("資訊不足") ? "rejected_low_information" : "rejected_invalid_idea", msg, JSON.stringify(analyzeData));
-      return reject("rejected_invalid_idea", msg, JSON.stringify(analyzeData));
+      if (code === "UNSUPPORTED_IDEA") return reject("needs_revision", msg, JSON.stringify(analyzeData));
+      if (code === "INVALID_IDEA") return reject("needs_revision", msg, JSON.stringify(analyzeData));
+      return reject("needs_revision", msg, JSON.stringify(analyzeData));
     }
 
     // 4b. 502/500 = system error (payment NOT used)
@@ -156,7 +164,7 @@ export async function POST(request: Request) {
     const light = d?.light as string;
     if (light && ["red", "yellow", "green"].includes(light)) {
       await recordStore.usePayment(paymentId);
-      const u = await recordStore.updateAnalysis(analysis.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, used: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
+      const u = await recordStore.updateAnalysis(analysis!.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, used: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
       return Response.json({ ...buildRes(u!, true), analysisResult: analyzeData as AnalysisResult });
     }
 
