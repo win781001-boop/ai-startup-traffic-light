@@ -51,7 +51,7 @@ export const recordStore = {
     const now = new Date();
     const updated = await prisma.payment.update({ where: { id }, data: { status: "paid", paidAt: now } });
     const analysis = await prisma.analysis.findFirst({ where: { paymentId: id } });
-    if (analysis) await prisma.analysis.update({ where: { id: analysis.id }, data: { status: "submitted" } });
+    // Analysis stays "pending" until submit-analysis sets it to "submitted"
     return {
       id: updated.id, status: updated.status as Payment["status"], used: updated.used,
       usedAt: updated.usedAt?.toISOString() ?? null, createdAt: updated.createdAt.toISOString(),

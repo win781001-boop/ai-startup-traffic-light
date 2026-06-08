@@ -1,4 +1,4 @@
-import { recordStore } from "@/lib/record-store";
+﻿import { recordStore } from "@/lib/record-store";
 import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
 
@@ -105,8 +105,19 @@ export async function POST(request: Request) {
     if (analysis.paymentId !== paymentId) return Response.json({ error: "分析與付款不符。" }, { status: 400 });
 
     // ─── Attempt limit checks (before any AI call) ───
-    if (analysis.used) {
-      return Response.json({ error: "此分析已產生正式判定，無法再次送出。" }, { status: 400 });
+    // ─── Duplicate submission checks (before any AI call) ───
+    if (analysis.used || (analysis.hasSignal && analysis.status === "completed")) {
+      return Response.json({
+        status: "duplicate_submission",
+        message: "本次付款已送出判定，請勿重複提交。",
+      }, { status: 409 });
+    }
+
+    if (analysis.status === "submitted" && analysis.completedAt === null) {
+      return Response.json({
+        status: "duplicate_submission",
+        message: "本次判定正在處理中，請勿重複提交。",
+      }, { status: 409 });
     }
 
     if (analysis.attemptCount >= analysis.maxAttempts) {
