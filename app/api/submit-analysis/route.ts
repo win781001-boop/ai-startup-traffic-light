@@ -149,10 +149,19 @@ export async function POST(request: Request) {
 
     // ─── Helper: system error (payment NOT used, attempt counted) ───
     async function sysErr(reason: string, aiRaw?: string | null) {
-      const u = await recordStore.updateAnalysis(analysis!.id, { status: "failed_system_error", hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
-      return Response.json(buildRes(u!, false, remainingAttempts));
+      // Rollback attempt count — system errors should not consume revision attempts
+      const u = await recordStore.updateAnalysis(analysis!.id, {
+        attemptCount: analysis!.attemptCount,
+        status: "failed_system_error", hasSignal: false,
+        completedAt: new Date().toISOString(),
+        errorReason: reason,
+        aiRawResponse: aiRaw ?? null, used: false,
+      });
+      // Recalculate remaining attempts after rollback
+      const updatedAnalysis = await recordStore.getAnalysis(analysis!.id);
+      const remaining = updatedAnalysis ? updatedAnalysis.maxAttempts - updatedAnalysis.attemptCount : remainingAttempts;
+      return Response.json(buildRes(updatedAnalysis!, false, remaining));
     }
-
     // 1. Illegal / grey-area
     if (isIllegalIdea(combinedText)) return reject("needs_revision", "這個點子涉及不支援的內容，無法判定。");
 

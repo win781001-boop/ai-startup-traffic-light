@@ -12,6 +12,7 @@ export const STATUS_LABEL: Record<string, string> = {
   rejected_unsupported: "不支援的內容",
   failed_system_error: "系統錯誤",
   attempts_exhausted: "已達判定次數上限",
+  needs_revision: "需補充內容",
 };
 
 export const lightConfig: Record<string, { label: string; dot: string; css: string; border: string }> = {
