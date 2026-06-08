@@ -810,7 +810,16 @@ export default function Home() {
         )}
 
         {/* Footer */}
-        <footer className="mt-16 text-center text-xs text-white/15">AI創業紅綠燈 v0.4-alpha — 僅供參考，請自行驗證市場需求</footer>
+        <footer className="mt-16 text-center space-y-3">
+          <nav className="flex items-center justify-center gap-3 text-xs">
+            <a href="/terms" className="text-white/30 hover:text-white/60 transition">服務條款</a>
+            <span className="text-white/15">｜</span>
+            <a href="/privacy" className="text-white/30 hover:text-white/60 transition">隱私權政策</a>
+            <span className="text-white/15">｜</span>
+            <a href="/refund" className="text-white/30 hover:text-white/60 transition">退款政策</a>
+          </nav>
+          <p className="text-xs text-white/15">AI創業紅綠燈 v0.7-alpha — 僅供參考，請自行驗證市場需求</p>
+        </footer>
       </div>
     </div>
   );
