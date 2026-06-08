@@ -156,6 +156,20 @@ export const recordStore = {
     };
   },
 
+
+  /**
+   * Atomically claim an analysis for processing.
+   * Only succeeds if the analysis is in one of the allowed statuses
+   * (not already submitted/completed), preventing race conditions.
+   */
+  async tryClaimAnalysis(analysisId: string, expectedStatuses: string[], newAttemptCount: number): Promise<boolean> {
+    const result = await prisma.analysis.updateMany({
+      where: { id: analysisId, status: { in: expectedStatuses } },
+      data: { status: "submitted", attemptCount: newAttemptCount },
+    });
+    return result.count > 0;
+  },
+
   async saveFeedback(analysisId: string, paymentId: string, value: string): Promise<Feedback> {
     const feedback = await prisma.feedback.create({
       data: { analysisId, paymentId, value },

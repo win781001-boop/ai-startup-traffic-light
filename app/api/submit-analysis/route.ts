@@ -135,11 +135,27 @@ export async function POST(request: Request) {
     // Update placeholder Submission with real inputs
     await recordStore.updateAnalysisInputs(analysisId, inputs);
 
-    // ─── Increment attempt count BEFORE validation / AI call ───
+
+    // ─── Atomically claim this analysis for processing ───
+    // Prevents race conditions: only one request can transition
+    // from an inactive status (pending/needs_revision/failed_system_error)
+    // to "submitted" at a time.
     const newAttemptCount = analysis.attemptCount + 1;
-    await recordStore.updateAnalysis(analysisId, { attemptCount: newAttemptCount, status: "submitted" });
+    const claimed = await recordStore.tryClaimAnalysis(
+      analysisId,
+      ["pending", "needs_revision", "failed_system_error"],
+      newAttemptCount
+    );
+    if (!claimed) {
+      return Response.json({
+        status: "duplicate_submission",
+        message: "本次判定正在處理中，請勿重複提交。",
+      }, { status: 409 });
+    }
+    // Reload to get updated attemptCount for remaining calculation
     const attemptAnalysis = await recordStore.getAnalysis(analysisId);
     const remainingAttempts = attemptAnalysis!.maxAttempts - attemptAnalysis!.attemptCount;
+
 
     // ─── Helper: rejection (payment NOT used, attempt counted) ───
     async function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
