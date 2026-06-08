@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
@@ -76,6 +76,8 @@ export default function Home() {
   const [riskForm, setRiskForm] = useState({ idea: "", targetUser: "", problem: "" });
   const [boundaryError, setBoundaryError] = useState<string | null>(null);
 
+  const [expandedExamples, setExpandedExamples] = useState<Record<string, boolean>>({});
+
   // Payment state
   const [showPayment, setShowPayment] = useState(false);
   const [paymentData, setPaymentData] = useState<{ id: string; createdAt: string } | null>(null);
@@ -97,6 +99,10 @@ export default function Home() {
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number>(3);
+
+  function toggleExample(key: string) {
+    setExpandedExamples((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function updateRiskField(key: string, value: string) {
     setRiskForm((prev) => ({ ...prev, [key]: value }));
@@ -472,14 +478,47 @@ export default function Home() {
             <h2 className="mb-2 text-lg font-semibold text-white">先填 3 題，確認要判定的點子</h2>
             <p className="mb-6 text-sm text-text-secondary">先用 3 題整理你的點子。付款後再補充 3 題，系統會依市場跡象與四象限給出紅黃綠燈判定。</p>
             <form className="space-y-4">
-              <Field label="你的點子是什麼？" hint="簡短描述你的創業或副業點子">
+              <Field label="你的點子是什麼？" hint={<>簡短描述你的創業或副業點子 <button
+                  type="button"
+                  onClick={() => toggleExample("idea")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button></>}>
                 <input type="text" value={riskForm.idea} onChange={(e) => updateRiskField("idea", e.target.value)} placeholder="例如：AI 食譜產生器" required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                {expandedExamples["idea"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    我想做一個給小型餐飲店使用的促銷文案產生網站，讓老闆輸入菜色、優惠內容、目標客群後，快速產生 Facebook、LINE、IG 可用的促銷文案。
+                  </div>
+                )}
               </Field>
-              <Field label="目標使用者是誰？" hint="描述你的目標族群">
+              <Field label="目標使用者是誰？" hint={<>描述你的目標族群 <button
+                  type="button"
+                  onClick={() => toggleExample("targetUser")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button></>}>
                 <input type="text" value={riskForm.targetUser} onChange={(e) => updateRiskField("targetUser", e.target.value)} placeholder="例如：每天煮飯的家庭主婦" required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                {expandedExamples["targetUser"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    主要是沒有行銷人員的小型餐飲店老闆，例如便當店、早餐店、飲料店、咖啡店。
+                  </div>
+                )}
               </Field>
-              <Field label="它解決什麼問題？" hint="描述這個點子想解決的核心問題">
+              <Field label="它解決什麼問題？" hint={<>描述這個點子想解決的核心問題 <button
+                  type="button"
+                  onClick={() => toggleExample("problem")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button></>}>
                 <input type="text" value={riskForm.problem} onChange={(e) => updateRiskField("problem", e.target.value)} placeholder="例如：不知道每天要煮什麼" required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                {expandedExamples["problem"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    很多小店老闆知道要做促銷，但不知道文案怎麼寫，也沒有時間每天想貼文內容，導致活動曝光很低。
+                  </div>
+                )}
               </Field>
               <button type="button" onClick={handleRiskNext} disabled={!riskForm.idea?.trim() || !riskForm.targetUser?.trim() || !riskForm.problem?.trim()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
                 下一步：付費 49 元開始判定
@@ -551,23 +590,98 @@ export default function Home() {
             <h2 className="mb-2 text-lg font-semibold text-white">完整判定</h2>
             <p className="mb-6 text-sm text-text-secondary">已帶入風險掃描的 3 題，請再補充 3 題，取得正式紅黃綠燈結果。</p>
             <form onSubmit={handleFullSubmit} className="space-y-4">
-              <Field label="你的點子是什麼？" hint="簡短描述你的創業或副業點子">
+              <Field label="你的點子是什麼？" hint={<>簡短描述你的創業或副業點子 <button
+                  type="button"
+                  onClick={() => toggleExample("idea")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button></>}>
                 <input type="text" value={fullForm.idea} onChange={(e) => updateFullField("idea", e.target.value)} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                {expandedExamples["idea"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    我想做一個給小型餐飲店使用的促銷文案產生網站，讓老闆輸入菜色、優惠內容、目標客群後，快速產生 Facebook、LINE、IG 可用的促銷文案。
+                  </div>
+                )}
               </Field>
-              <Field label="目標使用者是誰？" hint="描述你的目標族群">
+              <Field label="目標使用者是誰？" hint={<>描述你的目標族群 <button
+                  type="button"
+                  onClick={() => toggleExample("targetUser")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button></>}>
                 <input type="text" value={fullForm.targetUser} onChange={(e) => updateFullField("targetUser", e.target.value)} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                {expandedExamples["targetUser"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    主要是沒有行銷人員的小型餐飲店老闆，例如便當店、早餐店、飲料店、咖啡店。
+                  </div>
+                )}
               </Field>
-              <Field label="它解決什麼問題？" hint="描述這個點子想解決的核心問題">
+              <Field label="它解決什麼問題？" hint={<>描述這個點子想解決的核心問題 <button
+                  type="button"
+                  onClick={() => toggleExample("problem")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button></>}>
                 <input type="text" value={fullForm.problem} onChange={(e) => updateFullField("problem", e.target.value)} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+                {expandedExamples["problem"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    很多小店老闆知道要做促銷，但不知道文案怎麼寫，也沒有時間每天想貼文內容，導致活動曝光很低。
+                  </div>
+                )}
               </Field>
               <Field label="你想怎麼收費？" hint="描述收費方式或商業模式">
                 <input type="text" value={fullForm.pricing} onChange={(e) => updateFullField("pricing", e.target.value)} required maxLength={400} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggleExample("pricing")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button>
+                {expandedExamples["pricing"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    先用單次付費，一次產生 10 組促銷文案收 49 元。之後如果有人常用，再考慮月費方案。
+                  </div>
+                )}
+              </div>
               </Field>
               <Field label="第一版你打算怎麼做？" hint="描述第一版的範圍">
                 <input type="text" value={fullForm.firstVersion} onChange={(e) => updateFullField("firstVersion", e.target.value)} required maxLength={400} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggleExample("firstVersion")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button>
+                {expandedExamples["firstVersion"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    第一版只做一個簡單網頁，使用者填店名、商品、優惠內容、目標客群後，系統產生 10 組促銷文案，不先做會員、後台或複雜排程功能。
+                  </div>
+                )}
+              </div>
               </Field>
               <Field label="你預估多久能完成？" hint="預估開發時間">
                 <input type="text" value={fullForm.buildTime} onChange={(e) => updateFullField("buildTime", e.target.value)} required maxLength={400} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggleExample("buildTime")}
+                  className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2"
+                >
+                  （範例）
+                </button>
+                {expandedExamples["buildTime"] && (
+                  <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
+                    我預計 2 週內先做出可以使用的網頁版，先找 5 間熟識的小店試用，再看有沒有人願意付費。
+                  </div>
+                )}
+              </div>
               </Field>
               <button type="submit" disabled={fullLoading} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
                 {fullLoading ? <><Spinner />判定中…</> : "送出完整判定"}
@@ -706,7 +820,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   return (<div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm"><h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/50">{title}</h3>{children}</div>);
 }
 
-function Field({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint: React.ReactNode; children: React.ReactNode }) {
   return (<label className="block space-y-1.5"><span className="block text-sm font-medium text-white/80">{label}</span><span className="block text-xs text-white/30">{hint}</span>{children}</label>);
 }
 
