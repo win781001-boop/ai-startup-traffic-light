@@ -1,6 +1,7 @@
 ﻿import { recordStore } from "@/lib/record-store";
 import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // ─── Validation helpers ───
 const NON_BIZ_KEYWORDS_EN = [
@@ -78,6 +79,14 @@ function buildRes(
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const limit = checkRateLimit(ip, 10, 10 * 60 * 1000);
+    if (!limit.allowed) {
+      return Response.json(
+        { error: "rate_limited", message: "請稍後再試。" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+      );
+    }
     const body = await request.json();
     const { paymentId, analysisId, idea, targetUser, problem, pricing, firstVersion, buildTime } = body as {
       paymentId: string;
