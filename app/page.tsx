@@ -182,8 +182,8 @@ export default function Home() {
           </div>
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
           <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不要因為 AI 做得出來，就急著開工。</p>
-          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">49 元不是買 AI 回答，是買一次可能幫你省下一週時間的冷靜檢查。</p>
-          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">單次完整判定 49 元</div>
+          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">用低成本先判斷方向，可能幫你省下幾週時間與幾萬元試錯成本。</p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次完整報告 49 元</div>
         </header>
 
         {/* Suitable / Unsuitable */}
@@ -194,16 +194,16 @@ export default function Home() {
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你正準備花幾天到幾週做一個 AI 副業、電商、工具或內容產品。</li>
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你有 2～5 個點子，不知道哪個該先做。</li>
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你曾經因為衝動開工，浪費過時間。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你看到 AI 能做網站或 App 後，開始想動手但缺乏產品判斷框架。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你看到 AI 能做網站或 App 後，也想動手，但缺乏產品判斷框架。</li>
             </ul>
           </div>
           <div className="rounded-xl border border-red-light/15 bg-red-light/[0.04] p-5">
             <h3 className="mb-2 text-sm font-semibold text-red-light">不適合你，如果：</h3>
             <ul className="space-y-1.5 text-sm text-text-secondary">
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你只是好奇玩玩，沒有真的要做。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />這個點子 1～2 小時就能完成。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />這件事 1～2 小時內就能自己驗證。</li>
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你已經有成熟的產品判斷能力。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你期待完整創業計畫、陪跑或整改方案。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你期待完整創業計畫、陪跑、保證成功或整改方案。</li>
             </ul>
           </div>
         </section>

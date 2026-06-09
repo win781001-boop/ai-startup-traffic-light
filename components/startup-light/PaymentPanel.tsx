@@ -20,7 +20,7 @@ export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, payme
       {/* Payment Card */}
       {showPayment && !paymentData && !paymentConfirmed && !analysisData && !boundaryError && (
         <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">單次完整判定 49 元</div>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">首次完整報告 49 元</div>
           <p className="mb-4 text-sm leading-relaxed text-text-secondary">你已完成前 3 題。付款後請再補充 3 題，系統會根據你的點子、市場跡象、付費可能、交付速度與維護負擔，給出紅燈、黃燈或綠燈判定。</p>
           <p className="mb-6 text-xs text-text-secondary/50">目前 v0.4-alpha 為測試版，付款流程暫以占位呈現。</p>
           <button onClick={onPaymentClick} disabled={paymentLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-light to-orange-400 px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
@@ -32,7 +32,7 @@ export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, payme
       {/* Payment Created Banner */}
       {paymentData && !paymentConfirmed && !analysisData && (
         <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">單次完整判定 49 元</div>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">首次完整報告 49 元</div>
           <p className="mb-4 text-sm leading-relaxed text-text-secondary">點擊下方按鈕模擬付款，確認後即可開始填寫完整判定資料。</p>
           <p className="mb-6 text-xs text-text-secondary/50">付款編號：{paymentData.id}</p>
           <button onClick={onConfirmPayment} disabled={confirmLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-light to-orange-400 px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
