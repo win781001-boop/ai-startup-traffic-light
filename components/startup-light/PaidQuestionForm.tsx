@@ -90,7 +90,7 @@ export function PaidQuestionForm({ form, onChange, onSubmit, fullLoading, expand
           );
         })}
         <button type="submit" disabled={fullLoading || !allValid} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
-          {fullLoading ? <><Spinner />系統判定中，請勿關閉頁面</> : "送出完整判定"}
+          {fullLoading ? <><Spinner />系統正在判定中，請稍候。</> : "送出完整判定"}
         </button>
       </form>
     </section>
