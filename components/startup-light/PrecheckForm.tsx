@@ -2,6 +2,14 @@
 
 import { Field, Spinner, EXAMPLE_TEXTS } from "./ui";
 
+const MIN_LENGTH = 10;
+const MAX_LENGTH = 100;
+
+function isFieldValid(v: string): boolean {
+  const t = v.trim();
+  return t.length >= MIN_LENGTH && t.length <= MAX_LENGTH;
+}
+
 interface PrecheckFormProps {
   idea: string;
   targetUser: string;
@@ -13,7 +21,9 @@ interface PrecheckFormProps {
 }
 
 export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expandedExamples, onToggleExample }: PrecheckFormProps) {
-  const btnDisabled = !idea.trim() || !targetUser.trim() || !problem.trim();
+  const fields = { idea, targetUser, problem };
+  const allValid = isFieldValid(idea) && isFieldValid(targetUser) && isFieldValid(problem);
+  const btnDisabled = !allValid;
 
   return (
     <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
@@ -27,9 +37,31 @@ export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expa
           problem: { label: "它解決什麼問題？", hint: "描述這個點子想解決的核心問題", placeholder: "例如：不知道每天要煮什麼" },
         };
         const { label, hint, placeholder } = labels[key];
+        const val = fields[key];
+        const charLen = val.trim().length;
+        const showLengthError = charLen > 0 && (charLen < MIN_LENGTH || charLen > MAX_LENGTH);
         return (
           <Field key={key} label={label} hint={<>{hint} <button type="button" onClick={() => onToggleExample(key)} className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2">（範例）</button></>}>
-            <input type="text" value={key === "idea" ? idea : key === "targetUser" ? targetUser : problem} onChange={(e) => onChange(key, e.target.value)} placeholder={placeholder} required maxLength={300} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]" />
+            <input
+              type="text"
+              value={val}
+              onChange={(e) => onChange(key, e.target.value)}
+              placeholder={placeholder}
+              required
+              maxLength={MAX_LENGTH}
+              className={`w-full rounded-xl border ${showLengthError ? "border-red-light/50" : "border-white/10"} bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20 focus:bg-white/[0.07]`}
+            />
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-xs text-white/30">請輸入 {MIN_LENGTH}～{MAX_LENGTH} 字</span>
+              {charLen > 0 && (
+                <span className={`ml-auto text-xs ${showLengthError ? "text-red-light" : "text-white/30"}`}>
+                  {charLen} / {MAX_LENGTH}
+                </span>
+              )}
+            </div>
+            {showLengthError && (
+              <p className="mt-1 text-xs text-red-light">每題請輸入 {MIN_LENGTH}～{MAX_LENGTH} 字。</p>
+            )}
             {expandedExamples[key] && (
               <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/60 leading-relaxed">
                 {EXAMPLE_TEXTS[key]}

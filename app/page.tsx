@@ -21,6 +21,9 @@ import { PaidQuestionForm } from "@/components/startup-light/PaidQuestionForm";
 import { AnalysisMeta, AnswerSummary, AnalysisSuccess, RevisionNotice } from "@/components/startup-light/Results";
 import { lightConfig, formatTime } from "@/components/startup-light/ui";
 
+const MIN_LENGTH = 10;
+const MAX_LENGTH = 100;
+
 const DEMO_CASES = [
   { title: "全品類 AI 電商平台", light: "red" as const, quadrant: "低需求 × 慢交付", judgement: "目標使用者、付費者與第一批商家都不明確，但第一版包含平台、會員、金流、物流、客服與後台，交付過重。" },
   { title: "AI 個人化穿搭電商", light: "yellow" as const, quadrant: "高需求 × 慢交付", judgement: "穿搭與購物決策可能有需求，但第一版若同時包含 AI 推薦、商品資料、庫存、購物車與會員，版本太重。" },
@@ -83,7 +86,8 @@ export default function Home() {
   }
 
   function handleRiskNext() {
-    if (!riskForm.idea?.trim() || !riskForm.targetUser?.trim() || !riskForm.problem?.trim()) return;
+    const v = (s: string) => { const t = s?.trim() ?? ""; return t.length >= MIN_LENGTH && t.length <= MAX_LENGTH; };
+    if (!v(riskForm.idea) || !v(riskForm.targetUser) || !v(riskForm.problem)) return;
     // Note: isLikelyNonBiz is removed since validation moved to server side
     setBoundaryError(null);
     setShowPayment(true);
@@ -125,6 +129,10 @@ export default function Home() {
   async function handleFullSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!paymentData) { setFullError("請先建立付款。"); return; }
+    const allFields = [fullForm.idea, fullForm.targetUser, fullForm.problem, fullForm.pricing, fullForm.firstVersion, fullForm.buildTime];
+    if (allFields.some(s => { const t = s?.trim() ?? ""; return t.length < MIN_LENGTH || t.length > MAX_LENGTH; })) {
+      setFullError("每題請輸入 10～100 字。"); return;
+    }
     setFullLoading(true); setFullError(null); setAnalysisData(null); setAnalysisResult(null);
     try {
       const res = await fetch("/api/submit-analysis", {
@@ -362,4 +370,3 @@ export default function Home() {
     </div>
   );
 }
-
