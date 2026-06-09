@@ -36,19 +36,65 @@ function truncateSnippet(text: string): string {
   return text.substring(0, MAX_SNIPPET_LENGTH) + "…";
 }
 
+/**
+ * Extract English tokens from a text blob.
+ * Returns lowercased, deduplicated words (length >= 2, not in common stopwords).
+ */
+function extractEnglishTokens(...texts: string[]): string[] {
+  const stopwords = new Set([
+    "is","an","to","in","of","for","the","and","or","on","at","by","be",
+    "it","as","no","my","me","we","us","so","up","do","if","he","she",
+  ]);
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const text of texts) {
+    const matches = text.match(/[a-zA-Z][a-zA-Z0-9]{1,}/g);
+    if (!matches) continue;
+    for (const raw of matches) {
+      const w = raw.toLowerCase();
+      if (stopwords.has(w) || w.length < 2 || seen.has(w)) continue;
+      seen.add(w);
+      result.push(w);
+      if (result.length >= 8) break;
+    }
+    if (result.length >= 8) break;
+  }
+  return result;
+}
+
 function generateQueries(input: IdeaInput): string[] {
-  const queries: string[] = [];
+  const terms = extractEnglishTokens(
+    input.idea, input.targetUser, input.problem,
+    input.pricing, input.firstVersion, input.buildTime
+  );
 
-  // Query 1: Market trends for the idea
-  queries.push(`${input.idea} market trends`);
+  const trunc = (a: string[], n: number) => a.slice(0, n).join(" ");
 
-  // Query 2: Competitors / alternatives related to target and problem
-  queries.push(`${input.targetUser} ${input.problem} alternatives`);
+  if (terms.length >= 3) {
+    // 3 distinct English queries from user's own terms
+    return [
+      trunc(terms, 5) + " market trends 2026",
+      trunc(terms, 4) + " competitors alternatives",
+      trunc(terms, 5) + " pricing business model",
+    ];
+  }
 
-  // Query 3: Pricing / business model
-  queries.push(`${input.idea} pricing business model`);
+  if (terms.length >= 1) {
+    const base = trunc(terms, 5);
+    return [
+      base + " market",
+      base + " competitors",
+      base + " pricing",
+    ];
+  }
 
-  return queries;
+  // Pure-Chinese input, no English tokens found.
+  // Use short generic English queries. These are broad but valid.
+  return [
+    "startup market trends 2026",
+    "consumer behavior small business",
+    "new business pricing strategy",
+  ];
 }
 
 async function singleSearch(query: string, apiKey: string): Promise<TavilySearchResult[]> {
@@ -70,7 +116,10 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
       signal: controller.signal,
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.log("[search-support] Tavily API error: status=" + response.status + " body=" + (await response.text()).substring(0, 200));
+      return [];
+    }
 
     const data: TavilyApiResponse = await response.json();
     return (data.results || [])
@@ -82,7 +131,8 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
         snippet: truncateSnippet(r.content || ""),
       }))
       .filter((r) => r.title.length > 0);
-  } catch {
+  } catch (e) {
+    console.log("[search-support] Tavily fetch error:", e instanceof Error ? e.message : String(e));
     return [];
   } finally {
     clearTimeout(timer);
@@ -105,13 +155,15 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
  * never displayed to the user.
  */
 export async function searchMarketContext(input: IdeaInput): Promise<SearchContext> {
+  console.log("[search-support] start");
   const apiKey = process.env.TAVILY_API_KEY;
+  console.log("[search-support] searchMarketContext called, hasApiKey:", !!apiKey);
   if (!apiKey) return { results: [], succeeded: false };
 
   // No TAVILY_API_KEY in mock/sandbox env — skip silently
   if (apiKey === "YOUR_TAVILY_API_KEY_HERE") return { results: [], succeeded: false };
-
   const queries = generateQueries(input);
+  console.log("[search-support] query count:", queries.length, "queries:", JSON.stringify(queries));
   const allResults: TavilySearchResult[] = [];
   const totalStart = Date.now();
 
@@ -123,6 +175,7 @@ export async function searchMarketContext(input: IdeaInput): Promise<SearchConte
     allResults.push(...results);
   }
 
+  console.log("[search-support] total results:", allResults.length, "succeeded:", allResults.length > 0);
   return {
     results: allResults,
     succeeded: allResults.length > 0,
