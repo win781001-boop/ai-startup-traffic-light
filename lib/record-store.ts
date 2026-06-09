@@ -14,18 +14,18 @@ export const recordStore = {
     const submissionId = genId("sub");
     const now = new Date();
 
-    const result = await prisma.$transaction(async (tx) => {
-      const p = await tx.payment.create({
+    // Sequential creates: avoids prisma.$transaction timeout with Neon WebSocket adapter.
+    // These three INSERTs are independent and do not need atomic wrapping.
+    const p = await prisma.payment.create({
         data: { id: paymentId, status: "pending", used: false, usedAt: null, createdAt: now, paidAt: null },
       });
-      await tx.submission.create({
+      await prisma.submission.create({
         data: { id: submissionId, paymentId, status: "pending", idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "", createdAt: now },
       });
-      const a = await tx.analysis.create({
+      const a = await prisma.analysis.create({
         data: { id: analysisId, submissionId, paymentId, status: "pending", used: false, signal: null, hasSignal: false, aiRawResponse: null, errorReason: null, attemptCount: 0, maxAttempts: 3, createdAt: now, completedAt: null },
       });
-      return { p, a };
-    });
+      const result = { p, a };
 
     return {
       payment: {
@@ -183,3 +183,4 @@ export const recordStore = {
     };
   },
 };
+
