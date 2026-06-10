@@ -140,6 +140,39 @@ async function callAnalyzeIdea(
   return { kind: "success", data: d, rawData: analyzeData };
 }
 
+// ─── Helper: rejection (payment NOT used, attempt counted) ───
+async function reject(
+  analysis: Analysis,
+  remainingAttempts: number,
+  status: Analysis["status"],
+  reason: string,
+  aiRaw?: string
+): Promise<Response> {
+  const u = await recordStore.updateAnalysis(analysis.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
+  return Response.json(buildRes(u!, false, remainingAttempts));
+}
+
+// ─── Helper: system error (payment NOT used, attempt counted) ───
+async function sysErr(
+  analysis: Analysis,
+  remainingAttempts: number,
+  reason: string,
+  aiRaw?: string | null
+): Promise<Response> {
+  // Rollback attempt count — system errors should not consume revision attempts
+  const u = await recordStore.updateAnalysis(analysis.id, {
+    attemptCount: analysis.attemptCount,
+    status: "failed_system_error", hasSignal: false,
+    completedAt: new Date().toISOString(),
+    errorReason: reason,
+    aiRawResponse: aiRaw ?? null, used: false,
+  });
+  // Recalculate remaining attempts after rollback
+  const updatedAnalysis = await recordStore.getAnalysis(analysis.id);
+  const remaining = updatedAnalysis ? updatedAnalysis.maxAttempts - updatedAnalysis.attemptCount : remainingAttempts;
+  return Response.json(buildRes(updatedAnalysis!, false, remaining));
+}
+
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
@@ -204,48 +237,28 @@ export async function POST(request: Request) {
     const remainingAttempts = attemptAnalysis!.maxAttempts - attemptAnalysis!.attemptCount;
 
 
-    // ─── Helper: rejection (payment NOT used, attempt counted) ───
-    async function reject(status: Analysis["status"], reason: string, aiRaw?: string) {
-      const u = await recordStore.updateAnalysis(analysis!.id, { status, hasSignal: false, completedAt: new Date().toISOString(), errorReason: reason, aiRawResponse: aiRaw ?? null, used: false });
-      return Response.json(buildRes(u!, false, remainingAttempts));
-    }
-
-    // ─── Helper: system error (payment NOT used, attempt counted) ───
-    async function sysErr(reason: string, aiRaw?: string | null) {
-      // Rollback attempt count — system errors should not consume revision attempts
-      const u = await recordStore.updateAnalysis(analysis!.id, {
-        attemptCount: analysis!.attemptCount,
-        status: "failed_system_error", hasSignal: false,
-        completedAt: new Date().toISOString(),
-        errorReason: reason,
-        aiRawResponse: aiRaw ?? null, used: false,
-      });
-      // Recalculate remaining attempts after rollback
-      const updatedAnalysis = await recordStore.getAnalysis(analysis!.id);
-      const remaining = updatedAnalysis ? updatedAnalysis.maxAttempts - updatedAnalysis.attemptCount : remainingAttempts;
-      return Response.json(buildRes(updatedAnalysis!, false, remaining));
-    }
+    
     // 1. Illegal / grey-area
-    if (isIllegalIdea(combinedText)) return reject("needs_revision", "這個點子涉及不支援的內容，無法判定。");
+    if (isIllegalIdea(combinedText)) return reject(analysis, remainingAttempts, "needs_revision", "這個點子涉及不支援的內容，無法判定。");
 
     // 2. Idea relevance
-    if (!isIdeaRelevant(combinedText)) return reject("needs_revision", "這個輸入不像商業點子，無法判定。");
+    if (!isIdeaRelevant(combinedText)) return reject(analysis, remainingAttempts, "needs_revision", "這個輸入不像商業點子，無法判定。");
 
     // 3. Low information
-    if (hasLowInformation(inputObj)) return reject("needs_revision", "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。");
+    if (hasLowInformation(inputObj)) return reject(analysis, remainingAttempts, "needs_revision", "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。");
 
     // 4. Call analyze-idea and process result
     const analysisResult = await callAnalyzeIdea(inputs, request.url);
 
     switch (analysisResult.kind) {
       case "fetch_error":
-        return sysErr(`系統錯誤：${analysisResult.message}`);
+        return sysErr(analysis, remainingAttempts, `系統錯誤：${analysisResult.message}`);
 
       case "needs_revision":
-        return reject("needs_revision", analysisResult.message, JSON.stringify(analysisResult.rawData));
+        return reject(analysis, remainingAttempts, "needs_revision", analysisResult.message, JSON.stringify(analysisResult.rawData));
 
       case "system_error":
-        return sysErr(analysisResult.message, analysisResult.rawData ? JSON.stringify(analysisResult.rawData) : undefined);
+        return sysErr(analysis, remainingAttempts, analysisResult.message, analysisResult.rawData ? JSON.stringify(analysisResult.rawData) : undefined);
 
       case "success": {
         const light = analysisResult.data.light as string;
@@ -256,7 +269,7 @@ export async function POST(request: Request) {
         }
 
         // Valid HTTP 200 but no light → system error
-        return sysErr("系統回傳格式異常，無法取得判燈結果。", JSON.stringify(analysisResult.rawData));
+        return sysErr(analysis, remainingAttempts, "系統回傳格式異常，無法取得判燈結果。", JSON.stringify(analysisResult.rawData));
       }
     }
   } catch (err) {

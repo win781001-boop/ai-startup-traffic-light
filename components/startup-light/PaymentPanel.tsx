@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Spinner, formatTime } from "./ui";
+import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
 interface PaymentPanelProps {
   showPayment: boolean;
@@ -36,7 +37,7 @@ export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, payme
           <p className="mb-4 text-sm leading-relaxed text-text-secondary">點擊下方按鈕模擬付款，確認後即可開始填寫完整判定資料。</p>
           <p className="mb-6 text-xs text-text-secondary/50">付款編號：{paymentData.id}</p>
           <button onClick={onConfirmPayment} disabled={confirmLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-light to-orange-400 px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-            {confirmLoading ? <><Spinner />付款確認中…</> : "確認付款 49 元"}
+            {confirmLoading ? <><Spinner />付款確認中…</> : "確認付款 " + FIRST_REPORT_PRICE_TWD + " 元"}
           </button>
         </section>
       )}

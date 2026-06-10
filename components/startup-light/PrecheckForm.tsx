@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Field, Spinner, EXAMPLE_TEXTS } from "./ui";
+import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
 const MIN_LENGTH = 10;
 const MAX_LENGTH = 100;

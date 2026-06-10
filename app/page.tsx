@@ -20,6 +20,7 @@ import { PaymentPanel } from "@/components/startup-light/PaymentPanel";
 import { PaidQuestionForm } from "@/components/startup-light/PaidQuestionForm";
 import { AnalysisMeta, AnswerSummary, AnalysisSuccess, RevisionNotice } from "@/components/startup-light/Results";
 import { lightConfig, formatTime } from "@/components/startup-light/ui";
+import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
 const MIN_LENGTH = 10;
 const MAX_LENGTH = 100;
