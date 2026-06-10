@@ -7,6 +7,50 @@ function genId(prefix: string): string {
   return `${prefix}-${n.toString(36)}-${r}`;
 }
 
+// ─── Mapping helpers ───
+
+/** Convert Prisma Payment row to application Payment type. */
+function toPayment(p: {
+  id: string;
+  status: string;
+  used: boolean;
+  usedAt: Date | null;
+  createdAt: Date;
+  paidAt: Date | null;
+}): Payment {
+  return {
+    id: p.id, status: p.status as Payment["status"], used: p.used,
+    usedAt: p.usedAt?.toISOString() ?? null, createdAt: p.createdAt.toISOString(),
+    paidAt: p.paidAt?.toISOString() ?? null,
+  };
+}
+
+/** Convert Prisma Analysis row (with submission relation) to application Analysis type. */
+function toAnalysis(a: {
+  id: string;
+  paymentId: string;
+  used: boolean;
+  status: string;
+  signal: string | null;
+  hasSignal: boolean;
+  attemptCount: number;
+  maxAttempts: number;
+  aiRawResponse: string | null;
+  errorReason: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+}, inputs: Analysis["inputs"]): Analysis {
+  return {
+    id: a.id, paymentId: a.paymentId,
+    inputs,
+    used: a.used, status: a.status as Analysis["status"],
+    signal: a.signal as Analysis["signal"], hasSignal: a.hasSignal,
+    attemptCount: a.attemptCount, maxAttempts: a.maxAttempts,
+    aiRawResponse: a.aiRawResponse, errorReason: a.errorReason,
+    createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
+  };
+}
+
 export const recordStore = {
   async createPayment(): Promise<{ payment: Payment; analysis: Analysis }> {
     const paymentId = genId("pay");
@@ -28,20 +72,8 @@ export const recordStore = {
       const result = { p, a };
 
     return {
-      payment: {
-        id: result.p.id, status: result.p.status as Payment["status"], used: result.p.used,
-        usedAt: result.p.usedAt?.toISOString() ?? null, createdAt: result.p.createdAt.toISOString(),
-        paidAt: result.p.paidAt?.toISOString() ?? null,
-      },
-      analysis: {
-        id: result.a.id, paymentId: result.a.paymentId,
-        inputs: { idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "" },
-        used: result.a.used, status: result.a.status as Analysis["status"],
-        signal: result.a.signal as Analysis["signal"], hasSignal: result.a.hasSignal,
-        attemptCount: result.a.attemptCount, maxAttempts: result.a.maxAttempts,
-        aiRawResponse: result.a.aiRawResponse, errorReason: result.a.errorReason,
-        createdAt: result.a.createdAt.toISOString(), completedAt: result.a.completedAt?.toISOString() ?? null,
-      },
+      payment: toPayment(result.p),
+      analysis: toAnalysis(result.a, { idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "" }),
     };
   },
 
@@ -50,34 +82,20 @@ export const recordStore = {
     if (!p || p.status !== "pending") return null;
     const now = new Date();
     const updated = await prisma.payment.update({ where: { id }, data: { status: "paid", paidAt: now } });
-    const analysis = await prisma.analysis.findFirst({ where: { paymentId: id } });
-    // Analysis stays "pending" until submit-analysis sets it to "submitted"
-    return {
-      id: updated.id, status: updated.status as Payment["status"], used: updated.used,
-      usedAt: updated.usedAt?.toISOString() ?? null, createdAt: updated.createdAt.toISOString(),
-      paidAt: updated.paidAt?.toISOString() ?? null,
-    };
+    return toPayment(updated);
   },
 
   async getPayment(id: string): Promise<Payment | null> {
     const p = await prisma.payment.findUnique({ where: { id } });
     if (!p) return null;
-    return {
-      id: p.id, status: p.status as Payment["status"], used: p.used,
-      usedAt: p.usedAt?.toISOString() ?? null, createdAt: p.createdAt.toISOString(),
-      paidAt: p.paidAt?.toISOString() ?? null,
-    };
+    return toPayment(p);
   },
 
   async usePayment(id: string): Promise<Payment | null> {
     const p = await prisma.payment.findUnique({ where: { id } });
     if (!p || p.used) return null;
     const updated = await prisma.payment.update({ where: { id }, data: { used: true, usedAt: new Date() } });
-    return {
-      id: updated.id, status: updated.status as Payment["status"], used: updated.used,
-      usedAt: updated.usedAt?.toISOString() ?? null, createdAt: updated.createdAt.toISOString(),
-      paidAt: updated.paidAt?.toISOString() ?? null,
-    };
+    return toPayment(updated);
   },
 
   async updateAnalysisInputs(analysisId: string, inputs: Analysis["inputs"]): Promise<Analysis> {
@@ -88,14 +106,7 @@ export const recordStore = {
       data: { idea: inputs.idea, targetUser: inputs.targetUser, problem: inputs.problem,
         pricing: inputs.pricing, firstVersion: inputs.firstVersion, buildTime: inputs.buildTime, status: "submitted" },
     });
-    return {
-      id: existing.id, paymentId: existing.paymentId, inputs,
-      used: existing.used, status: existing.status as Analysis["status"],
-      signal: existing.signal as Analysis["signal"], hasSignal: existing.hasSignal,
-      attemptCount: existing.attemptCount, maxAttempts: existing.maxAttempts,
-      aiRawResponse: existing.aiRawResponse, errorReason: existing.errorReason,
-      createdAt: existing.createdAt.toISOString(), completedAt: existing.completedAt?.toISOString() ?? null,
-    };
+    return toAnalysis(existing, inputs);
   },
 
   async updateAnalysis(id: string, updates: Partial<Pick<Analysis, "status" | "signal" | "hasSignal" | "aiRawResponse" | "errorReason" | "completedAt" | "used" | "attemptCount">>): Promise<Analysis | null> {
@@ -111,49 +122,31 @@ export const recordStore = {
     if (updates.used !== undefined) data.used = updates.used;
     if (updates.attemptCount !== undefined) data.attemptCount = updates.attemptCount;
     const updated = await prisma.analysis.update({ where: { id }, data, include: { submission: true } });
-    return {
-      id: updated.id, paymentId: updated.paymentId,
-      inputs: { idea: updated.submission.idea, targetUser: updated.submission.targetUser,
-        problem: updated.submission.problem, pricing: updated.submission.pricing,
-        firstVersion: updated.submission.firstVersion, buildTime: updated.submission.buildTime },
-      used: updated.used, status: updated.status as Analysis["status"],
-      signal: updated.signal as Analysis["signal"], hasSignal: updated.hasSignal,
-      attemptCount: updated.attemptCount, maxAttempts: updated.maxAttempts,
-      aiRawResponse: updated.aiRawResponse, errorReason: updated.errorReason,
-      createdAt: updated.createdAt.toISOString(), completedAt: updated.completedAt?.toISOString() ?? null,
-    };
+    return toAnalysis(updated, {
+      idea: updated.submission.idea, targetUser: updated.submission.targetUser,
+      problem: updated.submission.problem, pricing: updated.submission.pricing,
+      firstVersion: updated.submission.firstVersion, buildTime: updated.submission.buildTime,
+    });
   },
 
   async getAnalysis(id: string): Promise<Analysis | null> {
     const a = await prisma.analysis.findUnique({ where: { id }, include: { submission: true } });
     if (!a) return null;
-    return {
-      id: a.id, paymentId: a.paymentId,
-      inputs: { idea: a.submission.idea, targetUser: a.submission.targetUser,
-        problem: a.submission.problem, pricing: a.submission.pricing,
-        firstVersion: a.submission.firstVersion, buildTime: a.submission.buildTime },
-      used: a.used, status: a.status as Analysis["status"],
-      signal: a.signal as Analysis["signal"], hasSignal: a.hasSignal,
-      attemptCount: a.attemptCount, maxAttempts: a.maxAttempts,
-      aiRawResponse: a.aiRawResponse, errorReason: a.errorReason,
-      createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
-    };
+    return toAnalysis(a, {
+      idea: a.submission.idea, targetUser: a.submission.targetUser,
+      problem: a.submission.problem, pricing: a.submission.pricing,
+      firstVersion: a.submission.firstVersion, buildTime: a.submission.buildTime,
+    });
   },
 
   async getAnalysisByPaymentId(paymentId: string): Promise<Analysis | null> {
     const a = await prisma.analysis.findFirst({ where: { paymentId }, include: { submission: true } });
     if (!a) return null;
-    return {
-      id: a.id, paymentId: a.paymentId,
-      inputs: { idea: a.submission.idea, targetUser: a.submission.targetUser,
-        problem: a.submission.problem, pricing: a.submission.pricing,
-        firstVersion: a.submission.firstVersion, buildTime: a.submission.buildTime },
-      used: a.used, status: a.status as Analysis["status"],
-      signal: a.signal as Analysis["signal"], hasSignal: a.hasSignal,
-      attemptCount: a.attemptCount, maxAttempts: a.maxAttempts,
-      aiRawResponse: a.aiRawResponse, errorReason: a.errorReason,
-      createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
-    };
+    return toAnalysis(a, {
+      idea: a.submission.idea, targetUser: a.submission.targetUser,
+      problem: a.submission.problem, pricing: a.submission.pricing,
+      firstVersion: a.submission.firstVersion, buildTime: a.submission.buildTime,
+    });
   },
 
 
