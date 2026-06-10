@@ -313,7 +313,7 @@ function ErrorReportSection({ analysisId, paymentId }: ErrorReportSectionProps) 
 
           {/* screenshot */}
           <label className="block space-y-1.5">
-            <span className="block text-sm font-medium text-white/80">截圖（JPG / PNG / WebP，上限 5MB）</span>
+            <span className="block text-sm font-medium text-white/80">截圖（JPG / PNG / WebP，限 5MB）</span>
             <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleFileChange}
               className="w-full text-sm text-white/60 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20"
             />
@@ -412,4 +412,5 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
     </section>
   );
 }
+
 
