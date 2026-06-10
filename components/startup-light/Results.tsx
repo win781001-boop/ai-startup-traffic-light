@@ -157,16 +157,16 @@ interface FeedbackButtonsProps {
 export function FeedbackButtons({ feedbackSent, onFeedback }: FeedbackButtonsProps) {
   return (
     <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/50">這次判定準嗎？</h3>
+      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/50">本次判定有收穫嗎？</h3>
       <div className="flex gap-3">
-        {(["準", "普通", "不準"] as const).map((value) => {
+        {[{ value: "準" as const, label: "有" }, { value: "普通" as const, label: "普通" }, { value: "不準" as const, label: "沒有" }].map(({ value, label }) => {
           const btnClass = feedbackSent === value
             ? "border-white/30 bg-white/10 text-white"
             : "border-white/[0.08] text-text-secondary hover:border-white/20 hover:text-white";
           return (
             <button key={value} onClick={() => onFeedback(value)} disabled={feedbackSent !== null}
               className={"rounded-lg border px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 " + btnClass}
-            >{value}</button>
+            >{label}</button>
           );
         })}
       </div>
@@ -255,12 +255,7 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
         </div>
       )}
 
-      {/* e. 六題回答摘要 */}
-      <SectionCard title="你的本次回答摘要">
-        <AnswerSummary answers={answers} />
-      </SectionCard>
-
-      {/* f. 市場跡象 */}
+      {/* e. 市場跡象 */}
       {analysisResult.marketSignals && analysisResult.marketSignals.length > 0 && (
         <SectionCard title="根據填寫內容推估的市場跡象">
           <ul className="space-y-2">
@@ -272,6 +267,11 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
           </ul>
         </SectionCard>
       )}
+
+      {/* f. 六題回答摘要 */}
+      <SectionCard title="你的本次回答摘要">
+        <AnswerSummary answers={answers} />
+      </SectionCard>
 
       {/* g. 下載報告與回饋 */}
       <DownloadReportButton analysisResult={analysisResult} analysisData={analysisData} answers={answers} />
