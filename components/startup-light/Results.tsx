@@ -218,9 +218,8 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
   const lc = lightConfig[analysisResult.light] || lightConfig.red;
 
   return (
-    <section className="mb-12 space-y-5">
-      <AnalysisMeta analysisData={analysisData} />
-
+      <section className="mb-12 space-y-5">
+      {/* a. 紅黃綠判定結果 */}
       <div className={`rounded-2xl border px-6 py-6 text-center backdrop-blur-sm ${lc.border}`}>
         <div className={`mx-auto mb-4 inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${lc.css}`}>
           <span className={`inline-block h-2.5 w-2.5 rounded-full ${lc.dot}`} />{lc.label}
@@ -229,16 +228,39 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
         <p className="text-sm text-white/80">{analysisResult.oneLineJudgement}</p>
       </div>
 
+      {/* b. 判定時間 / 判定ID / 版本 */}
+      <AnalysisMeta analysisData={analysisData} />
+
       {analysisResult.isHighRisk && (
         <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-4 text-xs leading-relaxed text-yellow-light/80">
           此類點子涉及醫療、法律、金融或其他高風險場景。本工具只能做開工前的商業風險提醒，不構成法律、財務、醫療或合規建議。
         </div>
       )}
 
+      {/* c. 判定摘要 */}
+      {analysisResult.quadrantSummary && (
+        <SectionCard title="判定摘要">
+          <p className="text-sm text-white/80">{analysisResult.quadrantSummary.summary}</p>
+        </SectionCard>
+      )}
+
+      {/* d. 最大風險 */}
+      <SectionCard title="最大風險">
+        <p className="text-sm text-white/80">{analysisResult.biggestRisk}</p>
+      </SectionCard>
+
+      {analysisResult.oneLineJudgement.startsWith("測試模式") && (
+        <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
+          目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
+        </div>
+      )}
+
+      {/* e. 六題回答摘要 */}
       <SectionCard title="你的本次回答摘要">
         <AnswerSummary answers={answers} />
       </SectionCard>
 
+      {/* f. 市場跡象 */}
       {analysisResult.marketSignals && analysisResult.marketSignals.length > 0 && (
         <SectionCard title="根據填寫內容推估的市場跡象">
           <ul className="space-y-2">
@@ -251,24 +273,10 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
         </SectionCard>
       )}
 
-      {analysisResult.quadrantSummary && (
-        <SectionCard title="判定摘要">
-          <p className="text-sm text-white/80">{analysisResult.quadrantSummary.summary}</p>
-        </SectionCard>
-      )}
-
-      <SectionCard title="最大風險">
-        <p className="text-sm text-white/80">{analysisResult.biggestRisk}</p>
-      </SectionCard>
-
-      {analysisResult.oneLineJudgement.startsWith("測試模式") && (
-        <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
-          目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
-        </div>
-      )}
-
+      {/* g. 下載報告與回饋 */}
       <DownloadReportButton analysisResult={analysisResult} analysisData={analysisData} answers={answers} />
       <FeedbackButtons feedbackSent={feedbackSent} onFeedback={onFeedback} />
     </section>
   );
 }
+

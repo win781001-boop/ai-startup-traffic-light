@@ -2,44 +2,7 @@
 import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-
-// ─── Validation helpers ───
-const NON_BIZ_KEYWORDS_EN = [
-  "pi", "weather", "stock", "bitcoin", "crypto", "news",
-  "translate", "homework", "essay", "joke", "chat",
-  "love letter", "math", "equation",
-];
-const ILLEGAL_KEYWORDS = [
-  "piracy", "crack", "hack", "fake brand", "counterfeit",
-  "gambling", "porn", "scam", "phishing", "stolen data",
-  "fake reviews", "bot followers",
-];
-
-function isIdeaRelevant(text: string): boolean {
-  if (text.length < 6) return false;
-  if (/^(?:幫我|請你|可以幫我|告訴我|請|帮我|请|请告诉我|tell me|help me|can you)/i.test(text)) return false;
-  const first100 = text.substring(0, 100);
-  return !NON_BIZ_KEYWORDS_EN.some((kw) => first100.includes(kw));
-}
-function isIllegalIdea(text: string): boolean {
-  return ILLEGAL_KEYWORDS.some((kw) => text.toLowerCase().includes(kw.toLowerCase()));
-}
-const MEANINGLESS_PATTERNS = [/^test$/i, /^測試$/, /^123$/, /^1+$/, /^哈哈$/, /^隨便$/, /^不知道$/, /^asdf$/i, /^\?+$/];
-function hasLowInformation(input: IdeaInput): boolean {
-  const fields = [input.idea, input.targetUser, input.problem, input.pricing, input.firstVersion, input.buildTime];
-  const t = fields.map(f => (f || "").trim());
-  const last3 = [input.pricing, input.firstVersion, input.buildTime].map(f => (f || "").trim());
-  if (t.filter(f => f.length >= 1 && f.length <= 2).length >= 5) return true;
-  if (t.filter(f => f.length > 0 && /^\d+$/.test(f)).length >= 4) return true;
-  const nonEmpty = t.filter(f => f.length > 0);
-  if (nonEmpty.length >= 4 && new Set(nonEmpty).size === 1) return true;
-  if (t.filter(f => MEANINGLESS_PATTERNS.some(p => p.test(f))).length >= 4) return true;
-  if (t.reduce((s, f) => s + f.length, 0) < 12) return true;
-  if (last3.every(f => f.length >= 1 && f.length <= 2)) return true;
-  const _isLowLast = (s: string) => s.length > 0 && (/^\d+$/.test(s) || (s.length >= 2 && [...s].every(c => c === s[0])));
-  if (last3.filter(_isLowLast).length >= 2) return true;
-  return false;
-}
+import { isIdeaRelevant, isIllegalIdea, hasLowInformation } from "@/lib/idea-validation";
 
 // ─── Shared response type ───
 export interface SubmitAnalysisResponse {
@@ -77,6 +40,50 @@ function buildRes(
   };
 }
 
+// ─── Helpers ───
+
+/**
+ * Validate payment existence and status. Returns a Response on failure, null on success.
+ */
+async function validatePayment(paymentId: string): Promise<Response | null> {
+  const payment = await recordStore.getPayment(paymentId);
+  if (!payment) return Response.json({ error: "付款不存在。" }, { status: 404 });
+  if (payment.status !== "paid") return Response.json({ error: "此付款尚未完成確認，請先完成付款。" }, { status: 400 });
+  return null;
+}
+
+/**
+ * Check duplicate submission and attempt limits. Returns a Response on failure, null on success.
+ */
+async function checkDuplicateOrExhausted(analysisId: string, analysis: Analysis): Promise<Response | null> {
+  if (analysis.used || (analysis.hasSignal && analysis.status === "completed")) {
+    return Response.json({
+      status: "duplicate_submission",
+      message: "本次付款已送出判定，請勿重複提交。"
+    }, { status: 409 });
+  }
+
+  if (analysis.status === "submitted" && analysis.completedAt === null) {
+    return Response.json({
+      status: "duplicate_submission",
+      message: "本次判定正在處理中，請勿重複提交。"
+    }, { status: 409 });
+  }
+
+  if (analysis.attemptCount >= analysis.maxAttempts) {
+    await recordStore.updateAnalysis(analysisId, {
+      status: "attempts_exhausted" as Analysis["status"],
+      hasSignal: false, used: false,
+      completedAt: new Date().toISOString(),
+      errorReason: "已達判定次數上限"
+    });
+    const updated = await recordStore.getAnalysis(analysisId);
+    return Response.json(buildRes(updated!, false, 0));
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
@@ -100,9 +107,8 @@ export async function POST(request: Request) {
     }
 
     // Validate payment
-    const payment = await recordStore.getPayment(paymentId);
-    if (!payment) return Response.json({ error: "付款不存在。" }, { status: 404 });
-    if (payment.status !== "paid") return Response.json({ error: "此付款尚未完成確認，請先完成付款。" }, { status: 400 });
+    const paymentErr = await validatePayment(paymentId);
+    if (paymentErr) return paymentErr;
 
     const inputs: Analysis["inputs"] = { idea, targetUser, problem, pricing, firstVersion, buildTime };
     const combinedText = `${idea} ${targetUser} ${problem} ${pricing} ${firstVersion} ${buildTime}`;
@@ -113,33 +119,9 @@ export async function POST(request: Request) {
     if (!analysis) return Response.json({ error: "分析不存在。" }, { status: 404 });
     if (analysis.paymentId !== paymentId) return Response.json({ error: "分析與付款不符。" }, { status: 400 });
 
-    // ─── Attempt limit checks (before any AI call) ───
-    // ─── Duplicate submission checks (before any AI call) ───
-    if (analysis.used || (analysis.hasSignal && analysis.status === "completed")) {
-      return Response.json({
-        status: "duplicate_submission",
-        message: "本次付款已送出判定，請勿重複提交。",
-      }, { status: 409 });
-    }
-
-    if (analysis.status === "submitted" && analysis.completedAt === null) {
-      return Response.json({
-        status: "duplicate_submission",
-        message: "本次判定正在處理中，請勿重複提交。",
-      }, { status: 409 });
-    }
-
-    if (analysis.attemptCount >= analysis.maxAttempts) {
-      // Record exhausted state
-      await recordStore.updateAnalysis(analysisId, {
-        status: "attempts_exhausted" as Analysis["status"],
-        hasSignal: false, used: false,
-        completedAt: new Date().toISOString(),
-        errorReason: "已達判定次數上限",
-      });
-      const updated = await recordStore.getAnalysis(analysisId);
-      return Response.json(buildRes(updated!, false, 0));
-    }
+    // ─── Duplicate / attempt limit checks (before any AI call) ───
+    const dupErr = await checkDuplicateOrExhausted(analysisId, analysis);
+    if (dupErr) return dupErr;
 
     // Update placeholder Submission with real inputs
     await recordStore.updateAnalysisInputs(analysisId, inputs);

@@ -30,7 +30,7 @@ const FIELDS = [
 
 export function PaidQuestionForm({ form, onChange, onSubmit, fullLoading, expandedExamples, onToggleExample }: PaidQuestionFormProps) {
   const renderHint = (hint: string, key: string) => {
-    if (key === "idea" || key === "targetUser" || key === "problem") {
+    if (key === "idea" || key === "targetUser" || key === "problem" || key === "pricing" || key === "firstVersion" || key === "buildTime") {
       return <>{hint} <button type="button" onClick={() => onToggleExample(key)} className="text-xs text-white/40 hover:text-white/60 transition cursor-pointer underline underline-offset-2">（範例）</button></>;
     }
     return hint;

@@ -1,4 +1,5 @@
 ﻿import { searchMarketContext, formatSearchContext } from "@/lib/search-support";
+import { isIdeaRelevant, isIllegalIdea, hasLowInformation } from "@/lib/idea-validation";
 export interface IdeaInput {
   idea: string;
   targetUser: string;
@@ -45,21 +46,6 @@ const MOCK_MARKET_SIGNALS = [
 // TODO: 搜尋範圍只允許競品、替代方案、價格、使用者痛點與市場跡象，不允許一般搜尋或無關查詢。
 
 
-// Non-business idea keywords (Chinese — entries garbled, removed; front-end pre-check primary guard)
-const NON_BIZ_KEYWORDS_ZH: string[] = [];
-const NON_BIZ_KEYWORDS_EN = [
-  "pi", "weather", "stock", "bitcoin", "crypto", "news",
-  "translate", "homework", "essay", "joke", "chat",
-  "love letter", "math", "equation",
-];
-
-// Illegal / grey-area keywords
-const ILLEGAL_KEYWORDS = [
-  "piracy", "crack", "hack", "fake brand", "counterfeit",
-  "gambling", "porn", "scam", "phishing", "stolen data",
-  "fake reviews", "bot followers",
-];
-
 // High-risk industry keywords
 const HIGH_RISK_KEYWORDS = [
   "medical diagnosis", "legal contract", "stock picking",
@@ -67,57 +53,9 @@ const HIGH_RISK_KEYWORDS = [
   "mental health", "drug", "trading",
 ];
 
-function isIdeaRelevant(text: string): boolean {
-  if (text.length < 6) return false;
-  if (/^(?:幫我|請你|可以幫我|告訴我|請|帮我|请|请告诉我|tell me|help me|can you)/i.test(text)) return false;
-  const allKeywords = [...NON_BIZ_KEYWORDS_ZH, ...NON_BIZ_KEYWORDS_EN];
-  const first100 = text.substring(0, 100);
-  return !allKeywords.some((kw) => first100.includes(kw));
-}
-
-function isIllegalIdea(text: string): boolean {
-  return ILLEGAL_KEYWORDS.some((kw) => text.toLowerCase().includes(kw.toLowerCase()));
-}
-
 function isHighRiskIdea(text: string): boolean {
   return HIGH_RISK_KEYWORDS.some((kw) => text.toLowerCase().includes(kw.toLowerCase()));
-}
-
-// Low-information content check — catches filler/spam before AI call
-const MEANINGLESS_PATTERNS = [/^test$/i, /^測試$/, /^123$/, /^1+$/, /^哈哈$/, /^隨便$/, /^不知道$/, /^asdf$/i, /^\?+$/];
-
-function hasLowInformation(input: IdeaInput): boolean {
-  const fields = [input.idea, input.targetUser, input.problem, input.pricing, input.firstVersion, input.buildTime];
-  const t = fields.map(f => (f || "").trim());
-  const last3 = [input.pricing, input.firstVersion, input.buildTime].map(f => (f || "").trim());
-
-  // a. 5+ fields are only 1–2 characters
-  if (t.filter(f => f.length >= 1 && f.length <= 2).length >= 5) return true;
-
-  // b. 4+ fields are purely numeric
-  if (t.filter(f => f.length > 0 && /^\d+$/.test(f)).length >= 4) return true;
-
-  // c. 4+ non-empty fields are identical to each other
-  const nonEmpty = t.filter(f => f.length > 0);
-  if (nonEmpty.length >= 4 && new Set(nonEmpty).size === 1) return true;
-
-  // d. 4+ fields match meaningless filler patterns
-  if (t.filter(f => MEANINGLESS_PATTERNS.some(p => p.test(f))).length >= 4) return true;
-
-  // e. Total combined length across all 6 fields < 12 characters
-  if (t.reduce((s, f) => s + f.length, 0) < 12) return true;
-
-  // f. All 3 last fields (pricing / firstVersion / buildTime) are 1–2 chars each
-  if (last3.every(f => f.length >= 1 && f.length <= 2)) return true;
-
-  // g. 2+ of last 3 fields are low-info (purely numeric or single repeating character)
-  const _isLowLast = (s: string) => s.length > 0 && (/^\d+$/.test(s) || (s.length >= 2 && [...s].every(c => c === s[0])));
-  if (last3.filter(_isLowLast).length >= 2) return true;
-
-  return false;
-}
-
-function buildPrompt(input: IdeaInput, searchContext?: { succeeded: boolean; results: Array<{ title: string; url: string; snippet: string }> }): string {
+}function buildPrompt(input: IdeaInput, searchContext?: { succeeded: boolean; results: Array<{ title: string; url: string; snippet: string }> }): string {
   const noSearchMsg = "目前沒有真正外部搜尋資料，不得假裝已經查過網路。只能根據使用者提供的資訊推估 marketSignals。";
   if (searchContext?.succeeded && searchContext.results.length > 0) {
     return `請判定以下點子：
