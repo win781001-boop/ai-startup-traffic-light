@@ -83,6 +83,62 @@ async function checkDuplicateOrExhausted(analysisId: string, analysis: Analysis)
 
   return null;
 }
+/**
+ * Call /api/analyze-idea and return a structured result.
+ * Handles fetch, timeout, JSON parsing, and status-code classification.
+ * Never throws: returns a discriminated result object on any outcome.
+ */
+type AnalyzeIdeaResult =
+  | { kind: "success"; data: Record<string, unknown>; rawData: unknown }
+  | { kind: "needs_revision"; message: string; rawData: unknown }
+  | { kind: "system_error"; message: string; rawData?: unknown }
+  | { kind: "fetch_error"; message: string };
+
+async function callAnalyzeIdea(
+  inputs: Analysis["inputs"],
+  requestUrl: string
+): Promise<AnalyzeIdeaResult> {
+  let analyzeRes: Response;
+  try {
+    const url = new URL(requestUrl);
+    const baseUrl = `${url.protocol}//${url.host}`;
+    analyzeRes = await fetch(`${baseUrl}/api/analyze-idea`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(65000),
+      body: JSON.stringify(inputs),
+    });
+  } catch (fetchErr) {
+    const reason = fetchErr instanceof Error ? fetchErr.message : "無法連接到分析服務";
+    return { kind: "fetch_error", message: reason };
+  }
+
+  let analyzeData: unknown;
+  const rawText = await analyzeRes.text();
+  try {
+    analyzeData = JSON.parse(rawText);
+  } catch {
+    console.error('[submit-analysis] analyze-idea response not parseable as JSON — status=' + analyzeRes.status + ' statusText=' + analyzeRes.statusText + ' contentType=' + (analyzeRes.headers.get('content-type') || 'none') + ' bodyStart=' + rawText.substring(0, 2000));
+    return { kind: "system_error", message: "系統回傳內容無法解析。" };
+  }
+
+  const d = analyzeData as Record<string, unknown>;
+
+  // 400 = rejection (not a business idea, illegal, or low-information)
+  if (analyzeRes.status === 400) {
+    const code = d?.error as string;
+    const msg = (d?.message as string) || code || "無法判定";
+    return { kind: "needs_revision", message: msg, rawData: analyzeData };
+  }
+
+  // 502/500 = upstream AI service error
+  if (!analyzeRes.ok) {
+    return { kind: "system_error", message: (d?.error as string) || "AI 判定服務暫時無法使用", rawData: analyzeData };
+  }
+
+  // 200 = success (may or may not have a valid light)
+  return { kind: "success", data: d, rawData: analyzeData };
+}
 
 export async function POST(request: Request) {
   try {
@@ -178,50 +234,31 @@ export async function POST(request: Request) {
     // 3. Low information
     if (hasLowInformation(inputObj)) return reject("needs_revision", "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。");
 
-    // 4. Call analyze-idea internally
-    let analyzeRes: Response;
-    try {
-      const url = new URL(request.url);
-      const baseUrl = `${url.protocol}//${url.host}`;
-      analyzeRes = await fetch(`${baseUrl}/api/analyze-idea`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(65000),
-        body: JSON.stringify(inputs),
-      });
-    } catch (fetchErr) {
-      const reason = fetchErr instanceof Error ? fetchErr.message : "無法連接到分析服務";
-      return sysErr(`系統錯誤：${reason}`);
+    // 4. Call analyze-idea and process result
+    const analysisResult = await callAnalyzeIdea(inputs, request.url);
+
+    switch (analysisResult.kind) {
+      case "fetch_error":
+        return sysErr(`系統錯誤：${analysisResult.message}`);
+
+      case "needs_revision":
+        return reject("needs_revision", analysisResult.message, JSON.stringify(analysisResult.rawData));
+
+      case "system_error":
+        return sysErr(analysisResult.message, analysisResult.rawData ? JSON.stringify(analysisResult.rawData) : undefined);
+
+      case "success": {
+        const light = analysisResult.data.light as string;
+        if (light && ["red", "yellow", "green"].includes(light)) {
+          await recordStore.usePayment(paymentId);
+          const u = await recordStore.updateAnalysis(analysis!.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, used: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analysisResult.rawData), errorReason: null });
+          return Response.json({ ...buildRes(u!, true, remainingAttempts), analysisResult: analysisResult.rawData as AnalysisResult });
+        }
+
+        // Valid HTTP 200 but no light → system error
+        return sysErr("系統回傳格式異常，無法取得判燈結果。", JSON.stringify(analysisResult.rawData));
+      }
     }
-
-    let analyzeData: unknown;
-    const rawText = await analyzeRes.text();
-    try { analyzeData = JSON.parse(rawText); } catch { console.error('[submit-analysis] analyze-idea response not parseable as JSON — status=' + analyzeRes.status + ' statusText=' + analyzeRes.statusText + ' contentType=' + (analyzeRes.headers.get('content-type') || 'none') + ' bodyStart=' + rawText.substring(0, 2000)); return sysErr('系統回傳內容無法解析。'); }
-
-    const d = analyzeData as Record<string, unknown>;
-
-    // 4a. 400 = rejection by analyze-idea (payment NOT used, attempt counted)
-    if (analyzeRes.status === 400) {
-      const code = d?.error as string;
-      const msg = (d?.message as string) || code || "無法判定";
-      if (code === "UNSUPPORTED_IDEA") return reject("needs_revision", msg, JSON.stringify(analyzeData));
-      if (code === "INVALID_IDEA") return reject("needs_revision", msg, JSON.stringify(analyzeData));
-      return reject("needs_revision", msg, JSON.stringify(analyzeData));
-    }
-
-    // 4b. 502/500 = system error (payment NOT used, attempt counted)
-    if (!analyzeRes.ok) return sysErr((d?.error as string) || "AI 判定服務暫時無法使用", JSON.stringify(analyzeData));
-
-    // 5. Success: used = true, hasSignal = true
-    const light = d?.light as string;
-    if (light && ["red", "yellow", "green"].includes(light)) {
-      await recordStore.usePayment(paymentId);
-      const u = await recordStore.updateAnalysis(analysis!.id, { status: "completed", signal: light as "red" | "yellow" | "green", hasSignal: true, used: true, completedAt: new Date().toISOString(), aiRawResponse: JSON.stringify(analyzeData), errorReason: null });
-      return Response.json({ ...buildRes(u!, true, remainingAttempts), analysisResult: analyzeData as AnalysisResult });
-    }
-
-    // Valid HTTP 200 but no light → system error
-    return sysErr("系統回傳格式異常，無法取得判燈結果。", JSON.stringify(analyzeData));
   } catch (err) {
     console.error("[submit-analysis] Unexpected:", err);
     return Response.json({ error: "伺服器發生錯誤，請稍後再試。" }, { status: 500 });
