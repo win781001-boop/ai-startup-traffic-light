@@ -53,6 +53,19 @@ model Analysis {
   payment    Payment    @relation(fields: [paymentId], references: [id])
 }
 
+model ErrorReport {
+  id                  String   @id @default(cuid())
+  analysisId          String
+  paymentId           String   @unique
+  issueType           String
+  email               String
+  screenshotUrl       String
+  screenshotMimeType  String
+  screenshotSizeBytes Int
+  createdAt           DateTime @default(now())
+}
+
+
 model Feedback {
   id         String   @id @default(cuid())
   analysisId String

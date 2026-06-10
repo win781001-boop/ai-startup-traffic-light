@@ -1,4 +1,5 @@
 ﻿"use client";
+import React from "react";
 
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
 import type { SubmitAnalysisResponse } from "@/app/api/submit-analysis/route";
@@ -204,6 +205,137 @@ export function RevisionNotice({ remainingAttempts, onReset }: RevisionNoticePro
   );
 }
 
+
+// ─── ErrorReportSection ───
+
+const ISSUE_TYPES = [
+  "付款後沒有正常產生結果",
+  "下載報告無法開啟",
+  "判定內容出現亂碼或格式錯誤",
+  "判定結果頁顯示異常",
+  "我已付款但系統顯示未付款",
+  "其他系統錯誤",
+] as const;
+
+interface ErrorReportSectionProps {
+  analysisId: string;
+  paymentId: string;
+}
+
+function ErrorReportSection({ analysisId, paymentId }: ErrorReportSectionProps) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [issueType, setIssueType] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [screenshot, setScreenshot] = React.useState<File | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitted, setSubmitted] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setError(null);
+    if (file) {
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(file.type)) {
+        setError("只接受 JPG、PNG 或 WebP 格式。");
+        e.target.value = "";
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError("圖片大小不可超過 5MB。");
+        e.target.value = "";
+        return;
+      }
+    }
+    setScreenshot(file);
+  }
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const canSubmit = issueType.length > 0 && email.length > 0 && EMAIL_RE.test(email) && screenshot !== null;
+
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true); setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("analysisId", analysisId);
+      fd.append("paymentId", paymentId);
+      fd.append("issueType", issueType);
+      fd.append("email", email);
+      fd.append("screenshot", screenshot!);
+      const res = await fetch("/api/error-report", { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "送出失敗。");
+      }
+      setSubmitted(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "無法連接到伺服器。");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="rounded-xl border border-green-light/20 bg-green-light/[0.04] px-5 py-4 text-sm text-green-light">
+        <p className="font-semibold">問題回報已送出</p>
+        <p className="mt-1 text-xs text-green-light/70 leading-relaxed">已收到你的問題回報。我們會依付款編號、判定編號與系統紀錄進行確認。</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button type="button" onClick={() => { setExpanded(!expanded); setError(null); }} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+        {expanded ? "關閉問題回報" : "問題回報"}
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-4">
+          {/* issueType */}
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-medium text-white/80">問題類型</span>
+            <select value={issueType} onChange={e => { setIssueType(e.target.value); setError(null); }}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition focus:border-white/20">
+              <option value="" disabled className="bg-[#1a1a24]">請選擇問題類型</option>
+              {ISSUE_TYPES.map(t => <option key={t} value={t} className="bg-[#1a1a24]">{t}</option>)}
+            </select>
+          </label>
+
+          {/* email */}
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-medium text-white/80">電子信箱</span>
+            <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(null); }} placeholder="example@email.com" required
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/20"
+            />
+          </label>
+
+          {/* screenshot */}
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-medium text-white/80">截圖（JPG / PNG / WebP，上限 5MB）</span>
+            <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleFileChange}
+              className="w-full text-sm text-white/60 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20"
+            />
+            {screenshot && (
+              <p className="text-xs text-white/50">已選擇：{screenshot.name}（{(screenshot.size / 1024).toFixed(1)} KB）</p>
+            )}
+          </label>
+
+          {error && (
+            <p className="text-sm text-red-light">{error}</p>
+          )}
+
+          <button type="button" onClick={handleSubmit} disabled={!canSubmit || submitting}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
+            {submitting ? "送出中…" : "送出問題回報"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AnalysisSuccess (full success result) ───
 
 interface AnalysisSuccessProps {
@@ -275,6 +407,7 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
 
       {/* g. 下載報告與回饋 */}
       <DownloadReportButton analysisResult={analysisResult} analysisData={analysisData} answers={answers} />
+      <ErrorReportSection analysisId={analysisData.analysisId} paymentId={analysisData.paymentId} />
       <FeedbackButtons feedbackSent={feedbackSent} onFeedback={onFeedback} />
     </section>
   );
