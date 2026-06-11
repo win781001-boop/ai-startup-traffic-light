@@ -365,7 +365,7 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
 
       {analysisResult.isHighRisk && (
         <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-4 text-xs leading-relaxed text-yellow-light/80">
-          此類點子涉及醫療、法律、金融或其他高風險場景。本工具只能做開工前的商業風險提醒，不構成法律、財務、醫療或合規建議。
+          此類點子涉及醫療、法律、金融或其他高風險場景。本工具只能做開工前的商業風險提醒，不構成法律、財務或醫療建議。
         </div>
       )}
 
@@ -412,5 +412,6 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
     </section>
   );
 }
+
 
 

@@ -34,7 +34,7 @@ function buildPrompt(input: RiskScanInput): string {
 - 維護偏高
 - 資訊不足
 
-只能回傳合法 JSON 物件，不要 markdown，不要 \`\`\`json，不要 \`\`\`，不要任何解釋文字。`;
+只能回傳格式正確的 JSON 物件，不要 markdown，不要 \`\`\`json，不要 \`\`\`，不要任何解釋文字。`;
 }
 
 export async function POST(request: Request) {
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
           {
             role: "system",
             content:
-              "你是「AI創業紅綠燈」的風險掃描引擎。\n\n請根據使用者輸入的點子資訊，判斷這個點子目前的主要風險區域。\n\n風險區域只能是以下其中一個：\n- 需求不明\n- 付費不明\n- 交付過重\n- 維護偏高\n- 資訊不足\n\n重要限制：\n- 不准輸出「紅燈」、「黃燈」、「綠燈」字樣。\n- 只能回傳合法 JSON 物件，不要 markdown，不要 ```json，不要 ```，不要任何解釋文字。",
+              "你是「AI創業紅綠燈」的風險掃描引擎。\n\n請根據使用者輸入的點子資訊，判斷這個點子目前的主要風險區域。\n\n風險區域只能是以下其中一個：\n- 需求不明\n- 付費不明\n- 交付過重\n- 維護偏高\n- 資訊不足\n\n重要限制：\n- 不准輸出「紅燈」、「黃燈」、「綠燈」字樣。\n- 只能回傳格式正確的 JSON 物件，不要 markdown，不要 ```json，不要 ```，不要任何解釋文字。",
           },
           { role: "user", content: prompt },
         ],
@@ -135,3 +135,4 @@ export async function POST(request: Request) {
     return Response.json({ error: "伺服器發生錯誤，請稍後再試。" }, { status: 500 });
   }
 }
+
