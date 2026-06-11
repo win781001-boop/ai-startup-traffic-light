@@ -1,4 +1,4 @@
-﻿// ─── Quadrant Classification Rules v0.18 ───
+﻿// ─── Quadrant Classification Rules v0.18.1 ───
 // Maps "demand strength x execution concern" to traffic light results.
 
 export type DemandLevel = "high" | "low";
