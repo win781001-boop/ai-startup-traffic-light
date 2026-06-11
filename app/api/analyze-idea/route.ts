@@ -159,7 +159,6 @@ function sanitizeResult(raw: Record<string, unknown>): AnalysisResult {
 
 export async function POST(request: Request) {
   try {
-    console.log("ALOG analyze-idea POST handler ENTRY");
     const body: IdeaInput = await request.json();
     const apiKey = process.env.OPENAI_API_KEY;
     const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
@@ -224,9 +223,7 @@ export async function POST(request: Request) {
     // High-risk industry check
     const isHighRisk = isHighRiskIdea(combinedText);
 
-    console.log("[analyze-idea] before searchMarketContext");
     const searchContext = await searchMarketContext(body);
-    console.log("[analyze-idea] after searchMarketContext results length:", searchContext.results.length);
     const prompt = buildPrompt(body, searchContext);
 
     const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -267,7 +264,6 @@ export async function POST(request: Request) {
       return Response.json({ error: "AI 回傳內容為空，請重新提交。" }, { status: 502 });
     }
 
-    console.log("[analyze-idea] Raw AI response:", content);
 
     let cleanContent = content.trim();
     cleanContent = cleanContent.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
@@ -287,6 +283,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "伺服器發生錯誤，請稍後再試。" }, { status: 500 });
   }
 }
+
 
 
 

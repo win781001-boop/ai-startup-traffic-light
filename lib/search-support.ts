@@ -117,8 +117,7 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
     });
 
     if (!response.ok) {
-      console.log("[search-support] Tavily API error: status=" + response.status + " body=" + (await response.text()).substring(0, 200));
-      return [];
+          return [];
     }
 
     const data: TavilyApiResponse = await response.json();
@@ -132,7 +131,6 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
       }))
       .filter((r) => r.title.length > 0);
   } catch (e) {
-    console.log("[search-support] Tavily fetch error:", e instanceof Error ? e.message : String(e));
     return [];
   } finally {
     clearTimeout(timer);
@@ -155,15 +153,12 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
  * never displayed to the user.
  */
 export async function searchMarketContext(input: IdeaInput): Promise<SearchContext> {
-  console.log("[search-support] start");
   const apiKey = process.env.TAVILY_API_KEY;
-  console.log("[search-support] searchMarketContext called, hasApiKey:", !!apiKey);
   if (!apiKey) return { results: [], succeeded: false };
 
   // No TAVILY_API_KEY in mock/sandbox env — skip silently
   if (apiKey === "YOUR_TAVILY_API_KEY_HERE") return { results: [], succeeded: false };
   const queries = generateQueries(input);
-  console.log("[search-support] query count:", queries.length, "queries:", JSON.stringify(queries));
   const allResults: TavilySearchResult[] = [];
   const totalStart = Date.now();
 
@@ -175,7 +170,6 @@ export async function searchMarketContext(input: IdeaInput): Promise<SearchConte
     allResults.push(...results);
   }
 
-  console.log("[search-support] total results:", allResults.length, "succeeded:", allResults.length > 0);
   return {
     results: allResults,
     succeeded: allResults.length > 0,
@@ -196,3 +190,4 @@ export function formatSearchContext(results: TavilySearchResult[]): string {
 
   return `以下為外部搜尋取得的市場參考資料（僅供參考，非全面市場調查）：\n\n${lines.join("\n\n")}`;
 }
+
