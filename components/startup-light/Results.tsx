@@ -336,6 +336,46 @@ function ErrorReportSection({ analysisId, paymentId }: ErrorReportSectionProps) 
   );
 }
 
+// ─── Plain-language check summary ───
+
+interface CheckSummaryText {
+  needsLabel: string;
+  resistanceLabel: string;
+  verdict: string;
+}
+
+function getCheckSummary(light: string, demandLevel: string | undefined, concernLevel: string | undefined): CheckSummaryText {
+  // Default to yellow A for safety if data is missing
+  if (demandLevel === "high" && concernLevel === "low") {
+    return {
+      needsLabel: "需求明確，使用場景具體",
+      resistanceLabel: "有替代方式，但目前阻力可控",
+      verdict: "可以進入小規模 MVP 測試",
+    };
+  }
+  if (demandLevel === "high" && concernLevel === "high") {
+    return {
+      needsLabel: "有需求跡象，但強度仍需確認",
+      resistanceLabel: "有明顯阻力，需要先驗證",
+      verdict: "先不要做大，建議用小測試確認",
+    };
+  }
+  if (demandLevel === "low" && concernLevel === "low") {
+    return {
+      needsLabel: "有需求跡象，但強度仍需確認",
+      resistanceLabel: "有明顯阻力，需要先驗證",
+      verdict: "先不要做大，建議用小測試確認",
+    };
+  }
+  // low demand + high concern, or fallback
+  return {
+    needsLabel: "需求不夠明確，族群或場景太泛",
+    resistanceLabel: "阻力偏高，第一版不容易落地",
+    verdict: "暫時不建議投入開發",
+  };
+}
+
+
 // ─── AnalysisSuccess (full success result) ───
 
 interface AnalysisSuccessProps {
@@ -369,7 +409,37 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
         </div>
       )}
 
-      {/* c. 判定摘要 */}
+      {/* b2. 本次檢查重點 */}
+      {(() => {
+        const summary = getCheckSummary(analysisResult.light, analysisResult.demandLevel, analysisResult.concernLevel);
+        return (
+          <SectionCard title="本次檢查重點">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/40 w-28">有沒有人需要</span>
+                <span className="text-sm text-white/80">{summary.needsLabel}</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/40 w-28">做起來會不會有阻力</span>
+                <span className="text-sm text-white/80">{summary.resistanceLabel}</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/40 w-28">整體判斷</span>
+                <span className="text-sm text-white/80">{summary.verdict}</span>
+              </div>
+              <div className="flex items-start gap-3 pt-2 border-t border-white/[0.06]">
+                <span className="mt-0.5 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/40 w-28">燈號結果</span>
+                <span className="text-sm font-semibold text-white">{(() => {
+                  const lc = lightConfig[analysisResult.light] || lightConfig.red;
+                  return lc.label;
+                })()}</span>
+              </div>
+            </div>
+          </SectionCard>
+        );
+      })()}
+
+            {/* c. 判定摘要 */}
       {analysisResult.quadrantSummary && (
         <SectionCard title="判定摘要">
           <p className="text-sm text-white/80">{analysisResult.quadrantSummary.summary}</p>
@@ -412,6 +482,8 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
     </section>
   );
 }
+
+
 
 
 
