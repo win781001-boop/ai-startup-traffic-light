@@ -191,7 +191,7 @@ export default function Home() {
           </div>
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
           <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不是 AI 做得出來，就代表值得投入時間與成本。</p>
-          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，用需求強弱與執行疑慮，把你的 AI 工具、網站、App 或服務點子整理成紅黃綠檢查結果。</p>
+          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，先把你的 AI 工具、網站、App 或服務點子，整理成紅黃綠檢查結果。</p>
           <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次檢查 49 元</div>
         </header>
 
@@ -200,7 +200,7 @@ export default function Home() {
           <div className="rounded-xl border border-green-light/15 bg-green-light/[0.04] p-5">
             <h3 className="mb-2 text-sm font-semibold text-green-light">適合你，如果：</h3>
             <ul className="space-y-1.5 text-sm text-text-secondary">
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你正準備做一個 AI 副業、AI 工具、網站、App 或服務。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你正準備做 AI 副業、AI 工具、網站、App 或服務。</li>
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你有 2～5 個 AI 點子，不知道哪個該先投入。</li>
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你做得出產品，但不確定這是不是值得開工的方向。</li>
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你想在投入時間、金錢或開發成本前，先檢查需求、收費、交付與執行疑慮。</li>
@@ -371,3 +371,4 @@ export default function Home() {
     </div>
   );
 }
+
