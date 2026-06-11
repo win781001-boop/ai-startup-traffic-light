@@ -26,10 +26,10 @@ const MIN_LENGTH = 10;
 const MAX_LENGTH = 100;
 
 const DEMO_CASES = [
-  { title: "全品類 AI 電商平台", light: "red" as const, quadrant: "低需求 × 慢交付", judgement: "目標使用者、付費者與第一批商家都不明確，但第一版包含平台、會員、金流、物流、客服與後台，交付過重。" },
-  { title: "AI 個人化穿搭電商", light: "yellow" as const, quadrant: "高需求 × 慢交付", judgement: "穿搭與購物決策可能有需求，但第一版若同時包含 AI 推薦、商品資料、庫存、購物車與會員，版本太重。" },
-  { title: "AI 商品幸運色推薦", light: "yellow" as const, quadrant: "低需求 × 快交付", judgement: "點子有趣且容易做，但需求與付費意願不明，較適合小測，不適合重做。" },
-  { title: "銀髮族防滑用品推薦清單", light: "green" as const, quadrant: "高需求 × 快交付", judgement: "使用者族群明確，痛點具體，第一版可以用一頁式清單測商品點擊，不需要先做商城。" },
+  { title: "全品類 AI 電商平台", light: "red" as const, quadrant: "低需求 × 高疑慮", judgement: "目標使用者、付費者與第一批商家都不明確，但第一版包含平台、會員、金流、物流、客服與後台，交付過重。" },
+  { title: "AI 個人化穿搭電商", light: "yellow" as const, quadrant: "高需求 × 高疑慮", judgement: "穿搭與購物決策可能有需求，但第一版若同時包含 AI 推薦、商品資料、庫存、購物車與會員，版本太重。" },
+  { title: "AI 商品幸運色推薦", light: "yellow" as const, quadrant: "低需求 × 低疑慮", judgement: "點子有趣且容易做，但需求與付費意願不明，較適合小測，不適合重做。" },
+  { title: "銀髮族防滑用品推薦清單", light: "green" as const, quadrant: "高需求 × 低疑慮", judgement: "使用者族群明確，痛點具體，第一版可以用一頁式清單測商品點擊，不需要先做商城。" },
 ];
 
 type FeedbackValue = "準" | "普通" | "不準";
@@ -190,9 +190,9 @@ export default function Home() {
             </svg>
           </div>
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
-          <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不要因為 AI 做得出來，就急著開工。</p>
-          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">用低成本先判斷方向，可能幫你省下幾週時間與幾萬元試錯成本。</p>
-          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次完整報告 49 元</div>
+          <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不是 AI 做得出來，就代表值得投入時間與成本。</p>
+          <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，用需求強弱與執行疑慮，把你的 AI 工具、網站、App 或服務點子整理成紅黃綠檢查結果。</p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次檢查 49 元</div>
         </header>
 
         {/* Suitable / Unsuitable */}
@@ -200,26 +200,26 @@ export default function Home() {
           <div className="rounded-xl border border-green-light/15 bg-green-light/[0.04] p-5">
             <h3 className="mb-2 text-sm font-semibold text-green-light">適合你，如果：</h3>
             <ul className="space-y-1.5 text-sm text-text-secondary">
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你正準備花幾天到幾週做一個 AI 副業、電商、工具或內容產品。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你有 2～5 個點子，不知道哪個該先做。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你曾經因為衝動開工，浪費過時間。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你看到 AI 能做網站或 App 後，也想動手，但缺乏產品判斷框架。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你正準備做一個 AI 副業、AI 工具、網站、App 或服務。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你有 2～5 個 AI 點子，不知道哪個該先投入。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你做得出產品，但不確定這是不是值得開工的方向。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-light/40" />你想在投入時間、金錢或開發成本前，先檢查需求、收費、交付與執行疑慮。</li>
             </ul>
           </div>
           <div className="rounded-xl border border-red-light/15 bg-red-light/[0.04] p-5">
             <h3 className="mb-2 text-sm font-semibold text-red-light">不適合你，如果：</h3>
             <ul className="space-y-1.5 text-sm text-text-secondary">
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你只是好奇玩玩，沒有真的要做。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />這件事 1～2 小時內就能自己驗證。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你已經有成熟的產品判斷能力。</li>
-              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你期待完整創業計畫、陪跑、保證成功或整改方案。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你只是想測 AI 好不好玩，沒有真的準備投入資源。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你要的是完整創業計畫、陪跑、募資簡報或成功保證。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你期待系統直接幫你改點子、給整改方案或幫你做產品。</li>
+              <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-light/40" />你想問一般搜尋、數學題、投資預測、即時新聞、聊天、翻譯或作業。</li>
             </ul>
           </div>
         </section>
 
         {/* Product boundary notice */}
         <div className="mb-6 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-xs leading-relaxed text-text-secondary/60">
-          本工具只判定創業、副業、產品、服務、內容、網站、App 或商業點子。不處理一般搜尋、數學題、投資預測、即時新聞、聊天、翻譯、作業或非商業問題。
+          本工具只檢查 AI 副業、AI 工具、網站、App、服務或內容產品點子；不處理一般搜尋、數學題、投資預測、即時新聞、聊天、翻譯、作業或非商業問題。
         </div>
 
         {/* Precheck Form */}
@@ -365,7 +365,7 @@ export default function Home() {
             <span className="text-white/15">｜</span>
             <a href="/refund" className="text-white/30 hover:text-white/60 transition">退款政策</a>
           </nav>
-          <p className="text-xs text-white/15">AI創業紅綠燈 v0.7-alpha — 僅供參考，請自行驗證市場需求</p>
+          <p className="text-xs text-white/15">AI創業紅綠燈 v0.19-alpha — 僅供參考，請自行驗證市場需求</p>
         </footer>
       </div>
     </div>

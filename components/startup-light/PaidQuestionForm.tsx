@@ -47,7 +47,7 @@ export function PaidQuestionForm({ form, onChange, onSubmit, fullLoading, expand
   return (
     <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
       <h2 className="mb-2 text-lg font-semibold text-white">完整判定</h2>
-      <p className="mb-6 text-sm text-text-secondary">已帶入風險掃描的 3 題，請再補充 3 題，取得正式紅黃綠燈結果。</p>
+      <p className="mb-6 text-sm text-text-secondary">已帶入前 3 題，請再補充 3 題，取得紅黃綠檢查結果。</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         {FIELDS.map(({ key, label, hint }) => {
           const val = (form as Record<string, string>)[key];

@@ -117,7 +117,7 @@ export function DownloadReportButton({ analysisResult, analysisData, answers }: 
       ".reminder{text-align:center;font-size:12px;color:#999;margin-top:32px}";
 
     const h =
-      "<!DOCTYPE html><html lang=zh-Hant><head><meta charset=UTF-8><title>AI創業紅綠燈 判定報告</title><style>" + css +
+      "<!DOCTYPE html><html lang=zh-Hant><head><meta charset=UTF-8><title>AI創業紅綠燈 檢查結果</title><style>" + css +
       "</style></head><body><div class=container>" +
       "<div class=header><h1>AI創業紅綠燈 判定報告</h1><div class=meta>" +
       "判定編號:" + analysisData.analysisId + "<br>判定時間:" + formatTime(analysisData.completedAt || analysisData.createdAt) +
@@ -383,7 +383,7 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
 
       {analysisResult.oneLineJudgement.startsWith("測試模式") && (
         <div className="rounded-xl border border-yellow-light/20 bg-yellow-light/[0.04] px-5 py-3 text-xs text-yellow-light/80">
-          目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式 AI 判定。
+          目前為本機測試模式，結果為固定假資料。設定 OPENAI_API_KEY 後才會啟用正式紅黃綠檢查。
         </div>
       )}
 
