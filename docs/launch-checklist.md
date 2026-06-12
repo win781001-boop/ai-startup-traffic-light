@@ -1,6 +1,6 @@
 ﻿# AI創業紅綠燈 上線前測試清單
 
-> 版本：v0.12
+> 版本：v0.13
 > 建立日期：2026-06-09
 > 用途：正式上線前人工測試核對，涵蓋 API、防濫用、邊界輸入、UI、金流等面向
 
@@ -151,8 +151,9 @@
 - [ ] paymentId 與真實金流訂單號對應
 - [ ] 付款成功才允許 submit-analysis
 - [ ] 付款失敗不可 submit-analysis
-- [ ] webhook 防重複
-- [ ] webhook 紀錄付款狀態
+- [ ] webhook 防重複（dedupeKey + 重複回 200）
+- [ ] webhook 紀錄付款狀態（PaymentWebhookLog + Payment.status 更新）
+- [ ] webhook production guard 正確（NODE_ENV=production 時回 404，不處理 payload）
 - [ ] 重複付款處理
 - [ ] 退款處理流程
 - [ ] 金流測試環境通過

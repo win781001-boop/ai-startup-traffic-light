@@ -1,6 +1,6 @@
 ﻿# AI創業紅綠燈 真金流串接設計文件
 
-> 版本：v0.23
+> 版本：v0.24
 > 建立日期：2026-06-09
 > 用途：正式金流串接前的完整設計文件，釐清 payment / analysis / webhook / refund / duplicate handling 規則
 
@@ -12,7 +12,7 @@
 
 - `create-payment` 不串接真實金流，直接回傳一組 mock paymentId
 - `confirm-payment` 使用 mock 確認，不涉及真實付款
-- 無 webhook 端點
+- 有 /api/payment-webhook mock endpoint（僅 development/test 可用，production 回 404）
 - 無真實退款流程
 - 正式金流尚未選定與接入
 
@@ -91,7 +91,8 @@ ull | 金流 provider 端的訂單編號。真金流後由 create-payment 寫入
 | providerRawResponse | String? | 
 ull | provider create-order 的原始回傳（JSON 字串），客服除錯與對帳用 |
 
-> PaymentWebhookLog model 已於 Phase 3A 新增（prisma/schema.prisma + lib/types.ts + lib/record-store.ts），但尚未建立 webhook endpoint。
+> PaymentWebhookLog model 已於 Phase 3A 新增（prisma/schema.prisma + lib/types.ts + lib/record-store.ts）。
+> /api/payment-webhook 已於 Phase 3B 新增為 mock endpoint，僅 development/test 環境可用，production 回 404。
 
 ---
 
@@ -213,7 +214,7 @@ eeds_revision 處理所有內容驗證失敗情境，前述三個狀態已移除
 |------|-------------|
 | `app/api/create-payment/route.ts` | 串接金流 API，建立真實 payment order |
 | `app/api/submit-analysis/route.ts` | 檢查 payment 狀態為 paid 後才允許 submit |
-| `app/api/payment-webhook/route.ts` | **新增** — 接收金流 webhook，更新 payment 狀態 |
+| `app/api/payment-webhook/route.ts` | **已新增（Phase 3B）** — mock webhook endpoint，production 回 404。真金流階段需改為真實 provider adapter |
 | `lib/record-store.ts` | 新增 payment 狀態更新邏輯、atomic claim |
 | `prisma/schema.prisma` | 新增 payment 狀態欄位、webhook log table |
 | `components/startup-light/PaymentPanel.tsx` | 整合真實金流按鈕、付款後狀態輪詢 |
@@ -289,6 +290,8 @@ PaymentWebhookLog 與 Payment 無直接 foreign key 關聯（paymentId 為 Strin
 - [x] lib/record-store.ts — 新增 4 個基礎方法（create / getByDedupeKey / markProcessed / updateVerification）
 - [x] docs/payment-integration-plan.md — 本文件更新
 
+> webhook endpoint 已於 Phase 3B 新增，見 §16。
+
 ### 15.7 Phase 3A 不做的事
 
 - 不新增 webhook endpoint（app/api/payment-webhook/route.ts 尚未建立）
@@ -299,6 +302,100 @@ PaymentWebhookLog 與 Payment 無直接 foreign key 關聯（paymentId 為 Strin
 - 不改 Results.tsx
 - 不執行 prisma db push（需要使用者手動執行）
 - 不執行 migrate
+
+
+## 16. Mock Webhook Endpoint — Phase 3B（2026-06-12）
+
+### 16.1 概述
+
+`/api/payment-webhook` 是 **mock webhook endpoint**，並非真金流 endpoint。只在 development / test 環境可用。
+
+用途：
+
+- 驗證 webhook 接收 → 去重 → 簽章驗證 → 金額核對 → Payment 更新的完整流程
+- 確保 PaymentWebhookLog 的 dedupeKey、verification、processed 狀態正確運作
+- 提供測試腳本驗證邊界情境（amount mismatch / invalid signature / payment not found）
+
+### 16.2 Production Guard
+
+```typescript
+if (process.env.NODE_ENV === "production") {
+  return new Response(null, { status: 404 });
+}
+```
+
+Production 行為：
+
+- 回傳 HTTP **404**，不回傳 JSON body，不洩漏 endpoint 結構
+- 不解析 payload
+- 不寫入 PaymentWebhookLog
+- 不查詢 Payment
+- 不更新 Payment.status
+
+> **警告：除非真金流 provider 已接入且簽章驗證完成，否則不可移除 production guard。**
+
+### 16.3 Mock 驗證規則
+
+| 欄位 | 規則 |
+|------|------|
+| signature | `=== "mock-valid"` 視為有效，其他值視為無效 |
+| signatureValid | signature === "mock-valid" → true，其他 → false |
+| verified | 固定設為 true（每次都會執行 mock 驗證） |
+| amountMatch | route 內核對 payload.amountTwd 與 Payment.amountTwd |
+
+> **Production 不可使用 mock-valid 作為真實付款依據。** 真金流階段必須使用 provider 官方 SDK 或 API 進行簽章驗證。
+
+### 16.4 本地測試方式
+
+```powershell
+# Terminal 1：啟動 dev server
+npm run dev
+
+# Terminal 2：執行 webhook 測試
+.\scripts\test-payment-webhook.ps1
+```
+
+### 16.5 測試覆蓋範圍
+
+`scripts/test-payment-webhook.ps1` 目前涵蓋：
+
+| 測試案例 | 預期結果 |
+|----------|----------|
+| Valid webhook（mock-valid + 正確金額） | `processed: true` |
+| Duplicate webhook（相同 payload 第二次） | `duplicated: true` |
+| Amount mismatch（amountTwd=999 vs 49） | `reason: amount_mismatch` |
+| Invalid signature（signature="invalid"） | `reason: invalid_signature` |
+| Payment not found（不存在的 paymentId） | `reason: payment_not_found` |
+
+5 個測試案例全數通過（Passed 5 / Failed 0 / Skipped 0）。
+
+### 16.6 Phase 3B 已完成項目
+
+- [x] `app/api/payment-webhook/route.ts` — mock webhook endpoint
+- [x] Production guard（NODE_ENV === "production" 回 404）
+- [x] `lib/record-store.ts` — 新增 confirmPaymentByWebhook
+- [x] `scripts/test-payment-webhook.ps1` — 5 個測試案例
+- [x] `docs/payment-integration-plan.md` — 本文件更新
+
+### 16.7 接真金流前必須完成的事項
+
+以下為目前 mock webhook endpoint **尚未實作**的功能，真金流 provider 接入前必須補上：
+
+1. **真實 provider adapter** — 取代 mock signature 驗證，改用 provider 官方 SDK 或 API
+2. **真實簽章驗證** — 不再使用 `signature === "mock-valid"`，改為 provider 指定的簽章演算法
+3. **provider event id / provider payment id 對應** — 確保 webhook payload 中的 provider 端 ID 可正確對應到內部 paymentId
+4. **金額核對** — 比對 webhook payload 中的實際付款金額與 Payment.amountTwd（dedupeKey 流程目前正確）
+5. **webhook idempotency** — 去重邏輯已實作（dedupeKey），真金流階段應驗證 provider 是否會重送，以及 dedupeKey 是否涵蓋所有重送情境
+6. **Production 可用 endpoint 的安全設計** — 移除 production guard 的前提是真金流 provider 整合完成，且簽章驗證不可繞過
+
+### 16.8 重要限制
+
+- **不要把目前 mock endpoint 當作正式 webhook 使用**
+- **不要移除 production guard**，除非真金流 provider 與驗簽完成
+- mock-valid 不是真實簽章驗證，僅供開發測試
+- 正式上線前必須通過真金流串接前的完整 checklist（見 §14）
+
+
 ---
 
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-12
