@@ -1,6 +1,6 @@
-# AI創業紅綠燈 真金流串接設計文件
+﻿# AI創業紅綠燈 真金流串接設計文件
 
-> 版本：v0.22
+> 版本：v0.23
 > 建立日期：2026-06-09
 > 用途：正式金流串接前的完整設計文件，釐清 payment / analysis / webhook / refund / duplicate handling 規則
 
@@ -91,7 +91,7 @@ ull | 金流 provider 端的訂單編號。真金流後由 create-payment 寫入
 | providerRawResponse | String? | 
 ull | provider create-order 的原始回傳（JSON 字串），客服除錯與對帳用 |
 
-> PaymentWebhookLog model 尚未新增（留到 webhook endpoint phase）。
+> PaymentWebhookLog model 已於 Phase 3A 新增（prisma/schema.prisma + lib/types.ts + lib/record-store.ts），但尚未建立 webhook endpoint。
 
 ---
 
@@ -237,6 +237,68 @@ eeds_revision 處理所有內容驗證失敗情境，前述三個狀態已移除
 - [ ] 確認 production env vars（金流 API key、secret）
 - [ ] 確認上線前測試清單全部通過（docs/launch-checklist.md）
 
+
 ---
 
-**文件維護者：** ____________________ **最後更新日期：** ____________________
+## 15. PaymentWebhookLog — Phase 3A（2026-06-12）
+
+### 15.1 用途
+
+PaymentWebhookLog 用於紀錄金流 provider 發送的每一筆 webhook 通知。在未來真金流階段，webhook route 收到通知後會先寫入 PaymentWebhookLog，再進行簽章驗證、金額核對、payment 狀態更新等後續處理。
+
+### 15.2 dedupeKey 去重策略
+
+dedupeKey 是必填唯一鍵（`@unique`），用於確保 webhook idempotent：
+
+- **如果 provider 有明確 event id：** `providerName + ":" + providerEventId`
+- **如果 provider 沒有 event id：** `providerName + ":" + providerPaymentId + ":" + eventType`
+
+注意事項：
+
+- 不使用 `@@unique([providerName, providerEventId])`，因為 providerEventId 若為 null，PostgreSQL 無法可靠防止重複 webhook。
+- dedupeKey 的組合邏輯在未來 webhook route 中實作，不在 model 中自動產生。
+
+### 15.3 rawPayload 保存注意事項
+
+- rawPayload 儲存金流 provider 送來的**原始請求主體**（JSON 字串），不做任何修改。
+- 用於客服除錯、對帳、以及未來若需重放（replay）webhook 時的原始依據。
+- 注意隱私與法規：rawPayload 可能包含使用者個人資料（如姓名、電話），不應在不必要時輸出到日誌或前端。
+
+### 15.4 簽章驗證欄位意義
+
+| 欄位 | 型別 | 意義 |
+|------|------|------|
+| verified | Boolean | 驗證是否已完成（true = 已驗證，false = 尚未驗證或驗證失敗） |
+| verifiedAt | DateTime? | 驗證時間 |
+| signatureValid | Boolean? | 簽章是否有效（null = 尚未驗證，true = 有效，false = 無效） |
+| amountMatch | Boolean? | 金額是否匹配（null = 尚未核對，true = 匹配，false = 不匹配） |
+
+> amountMatch 不在 model 層計算，而是在未來 webhook route 內比對 rawPayload 中的金額與 Payment.amountTwd。
+
+### 15.5 資料庫欄位設計
+
+PaymentWebhookLog 與 Payment 無直接 foreign key 關聯（paymentId 為 String?），原因：
+
+- webhook 可能無法在第一時間對應到已知的 paymentId
+- 某些 webhook 通知可能與付款無直接關聯（如 provider 的測試 ping）
+
+### 15.6 Phase 3A 範圍（本次完成）
+
+- [x] prisma/schema.prisma — 新增 PaymentWebhookLog model（含欄位與索引）
+- [x] lib/types.ts — 新增 PaymentWebhookLog / CreatePaymentWebhookLogInput 型別
+- [x] lib/record-store.ts — 新增 4 個基礎方法（create / getByDedupeKey / markProcessed / updateVerification）
+- [x] docs/payment-integration-plan.md — 本文件更新
+
+### 15.7 Phase 3A 不做的事
+
+- 不新增 webhook endpoint（app/api/payment-webhook/route.ts 尚未建立）
+- 不接真實金流
+- 不改 create-payment / confirm-payment / submit-analysis route 行為
+- 不改前端 UI
+- 不改 AI prompt / 四象限 / 燈號規則
+- 不改 Results.tsx
+- 不執行 prisma db push（需要使用者手動執行）
+- 不執行 migrate
+---
+
+**文件維護者：** ____________________ **最後更新日期：** 2026-06-12

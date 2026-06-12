@@ -82,3 +82,26 @@ model Feedback {
   value      String
   createdAt  DateTime @default(now())
 }
+model PaymentWebhookLog {
+  id                String    @id @default(cuid())
+  paymentId         String?
+  providerName      String
+  providerEventId   String?
+  providerPaymentId String?
+  dedupeKey         String    @unique
+  eventType         String
+  rawPayload        String
+  verified          Boolean   @default(false)
+  verifiedAt        DateTime?
+  signatureValid    Boolean?
+  amountMatch       Boolean?
+  processed         Boolean   @default(false)
+  processedAt       DateTime?
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
+
+  @@index([paymentId])
+  @@index([providerName])
+  @@index([providerPaymentId])
+  @@index([createdAt])
+}

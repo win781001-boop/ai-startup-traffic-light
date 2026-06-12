@@ -1,5 +1,5 @@
 ﻿import { prisma } from "./prisma";
-import type { Payment, Analysis, Feedback } from "./types";
+import type { Payment, Analysis, Feedback, PaymentWebhookLog, CreatePaymentWebhookLogInput } from "./types";
 import { FIRST_REPORT_PRICE_TWD } from "./pricing";
 
 function genId(prefix: string): string {
@@ -57,6 +57,45 @@ function toAnalysis(a: {
     attemptCount: a.attemptCount, maxAttempts: a.maxAttempts,
     aiRawResponse: a.aiRawResponse, errorReason: a.errorReason,
     createdAt: a.createdAt.toISOString(), completedAt: a.completedAt?.toISOString() ?? null,
+  };
+}
+
+/** Convert Prisma PaymentWebhookLog row to application PaymentWebhookLog type. */
+function toPaymentWebhookLog(l: {
+  id: string;
+  paymentId: string | null;
+  providerName: string;
+  providerEventId: string | null;
+  providerPaymentId: string | null;
+  dedupeKey: string;
+  eventType: string;
+  rawPayload: string;
+  verified: boolean;
+  verifiedAt: Date | null;
+  signatureValid: boolean | null;
+  amountMatch: boolean | null;
+  processed: boolean;
+  processedAt: Date | null;
+  errorMessage: string | null;
+  createdAt: Date;
+}): PaymentWebhookLog {
+  return {
+    id: l.id,
+    paymentId: l.paymentId,
+    providerName: l.providerName,
+    providerEventId: l.providerEventId,
+    providerPaymentId: l.providerPaymentId,
+    dedupeKey: l.dedupeKey,
+    eventType: l.eventType,
+    rawPayload: l.rawPayload,
+    verified: l.verified,
+    verifiedAt: l.verifiedAt?.toISOString() ?? null,
+    signatureValid: l.signatureValid,
+    amountMatch: l.amountMatch,
+    processed: l.processed,
+    processedAt: l.processedAt?.toISOString() ?? null,
+    errorMessage: l.errorMessage,
+    createdAt: l.createdAt.toISOString(),
   };
 }
 
@@ -183,6 +222,84 @@ export const recordStore = {
       value: feedback.value as Feedback["value"],
       createdAt: feedback.createdAt.toISOString(),
     };
+  },
+  // ─── PaymentWebhookLog methods (Phase 3A) ───
+
+  /**
+   * 建立一筆 webhook 紀錄。
+   * dedupeKey 為唯一鍵，相同 dedupeKey 重複呼叫會拋 Prisma unique constraint 錯誤。
+   * 呼叫方應先透過 getPaymentWebhookLogByDedupeKey 檢查是否已存在。
+   */
+  async createPaymentWebhookLog(input: CreatePaymentWebhookLogInput): Promise<PaymentWebhookLog> {
+    const log = await prisma.paymentWebhookLog.create({
+      data: {
+        paymentId: input.paymentId ?? null,
+        providerName: input.providerName,
+        providerEventId: input.providerEventId ?? null,
+        providerPaymentId: input.providerPaymentId ?? null,
+        dedupeKey: input.dedupeKey,
+        eventType: input.eventType,
+        rawPayload: input.rawPayload,
+      },
+    });
+    return toPaymentWebhookLog(log);
+  },
+
+  /**
+   * 以 dedupeKey 查詢是否已存在 webhook 紀錄。
+   * 用於 webhook route 的 idempotency 檢查。
+   */
+  async getPaymentWebhookLogByDedupeKey(dedupeKey: string): Promise<PaymentWebhookLog | null> {
+    const log = await prisma.paymentWebhookLog.findUnique({
+      where: { dedupeKey },
+    });
+    if (!log) return null;
+    return toPaymentWebhookLog(log);
+  },
+
+  /**
+   * 標記 webhook 已處理完成。
+   * 可選填 errorMessage，例如 `skip: duplicate` 或 `skip: already_processed`。
+   */
+  async markPaymentWebhookLogProcessed(id: string, options?: { errorMessage?: string | null }): Promise<PaymentWebhookLog | null> {
+    const existing = await prisma.paymentWebhookLog.findUnique({ where: { id } });
+    if (!existing) return null;
+    const data: Record<string, unknown> = {
+      processed: true,
+      processedAt: new Date(),
+    };
+    if (options?.errorMessage !== undefined) data.errorMessage = options.errorMessage;
+    const updated = await prisma.paymentWebhookLog.update({ where: { id }, data });
+    return toPaymentWebhookLog(updated);
+  },
+
+  /**
+   * 更新 webhook 的簽章驗證與金額核對結果。
+   *
+   * verified: 設定驗證結果（true = 驗證通過 / false = 驗證失敗）
+   * signatureValid: 簽章是否有效（null = 尚未驗證）
+   * amountMatch: 金額是否匹配（null = 尚未核對）
+   *
+   * 注意：amountMatch 不在 model 層計算，
+   * 而是在未來 webhook route 內比對 rawPayload 中的金額與 Payment.amountTwd。
+   */
+  async updatePaymentWebhookLogVerification(id: string, options: {
+    verified: boolean;
+    signatureValid?: boolean | null;
+    amountMatch?: boolean | null;
+    errorMessage?: string | null;
+  }): Promise<PaymentWebhookLog | null> {
+    const existing = await prisma.paymentWebhookLog.findUnique({ where: { id } });
+    if (!existing) return null;
+    const data: Record<string, unknown> = {
+      verified: options.verified,
+      verifiedAt: options.verified ? new Date() : null,
+    };
+    if (options.signatureValid !== undefined) data.signatureValid = options.signatureValid;
+    if (options.amountMatch !== undefined) data.amountMatch = options.amountMatch;
+    if (options.errorMessage !== undefined) data.errorMessage = options.errorMessage;
+    const updated = await prisma.paymentWebhookLog.update({ where: { id }, data });
+    return toPaymentWebhookLog(updated);
   },
 };
 

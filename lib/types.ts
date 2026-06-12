@@ -57,3 +57,46 @@ export interface Feedback {
   value: "準" | "普通" | "不準";
   createdAt: string;
 }
+
+// ─── PaymentWebhookLog (Phase 3A) ───
+
+/**
+ * Webhook 回調紀錄，儲存金流 provider 發送的原始通知。
+ * 用於除錯、對帳、防重複處理，以及簽章驗證結果保留。
+ *
+ * 與 Payment model 無直接關聯（paymentId 可為 null），
+ * 以 dedupeKey 確保 idempotent 處理。
+ */
+export interface PaymentWebhookLog {
+  id: string;
+  paymentId: string | null;
+  providerName: string;
+  providerEventId: string | null;
+  providerPaymentId: string | null;
+  dedupeKey: string;
+  eventType: string;
+  rawPayload: string;
+  verified: boolean;
+  verifiedAt: string | null;
+  signatureValid: boolean | null;
+  amountMatch: boolean | null;
+  processed: boolean;
+  processedAt: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+/**
+ * createPaymentWebhookLog 的輸入型別。
+ * providerName、dedupeKey、eventType、rawPayload 為必填。
+ * paymentId / providerEventId / providerPaymentId 可選填（視金流 provider 而定）。
+ */
+export interface CreatePaymentWebhookLogInput {
+  paymentId?: string | null;
+  providerName: string;
+  providerEventId?: string | null;
+  providerPaymentId?: string | null;
+  dedupeKey: string;
+  eventType: string;
+  rawPayload: string;
+}
