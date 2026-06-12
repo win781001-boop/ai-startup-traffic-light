@@ -108,12 +108,13 @@ export function DownloadReportButton({ analysisResult, analysisData, answers }: 
       ".light-card p{font-size:14px;margin-top:6px;color:#444}" +
       ".card{background:white;border-radius:10px;border:1px solid #e0e0e0;padding:20px;margin-bottom:16px}" +
       ".card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:12px}" +
-      ".answer-item{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;line-height:1.5}" +
+      ".answer-item{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:14px;line-height:1.6}" +
       ".answer-item:last-child{border-bottom:none}" +
       ".answer-item .q{font-weight:600;color:#888;font-size:12px}" +
       ".answer-item .a{color:#1a1a1a;margin-top:2px;word-break:break-word}" +
       ".signals{list-style:none}" +
-      ".signals li{padding:6px 0;font-size:13px;line-height:1.5;color:#333}" +
+      ".signals li{padding:6px 0;font-size:14px;line-height:1.6;color:#333}" +
+      ".summary{font-size:14px;line-height:1.6;color:#444}" +
       ".reminder{text-align:center;font-size:12px;color:#999;margin-top:32px}";
 
     const h =
