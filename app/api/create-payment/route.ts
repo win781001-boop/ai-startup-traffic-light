@@ -17,5 +17,7 @@ export async function POST(request: Request) {
   }
 
   const { payment, analysis } = await recordStore.createPayment();
-  return Response.json({ payment, analysisId: analysis.id });
+  // Whitelist only the fields safe for the client — do not expose internal provider fields.
+  const { amountTwd, providerName, providerPaymentId, providerRawResponse, ...safePayment } = payment;
+  return Response.json({ payment: safePayment, analysisId: analysis.id });
 }
