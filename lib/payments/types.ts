@@ -12,6 +12,9 @@ export interface CreatePaymentInput {
   description: string;
   /** Optional customer email for payment receipt. */
   customerEmail?: string;
+  /** Merchant-side order number (e.g. paymentId), required by some providers. */
+  merchantOrderNo?: string;
+
   /** Optional metadata passed through to the provider (stored in raw response). */
   metadata?: Record<string, unknown>;
 }
@@ -36,6 +39,9 @@ export interface VerifyPaymentCallbackInput {
   provider: PaymentProviderName;
   /** The callback payload from the provider. */
   payload: Record<string, unknown>;
+  /** Raw request body string. Some providers compute signature over the raw body. */
+  rawBody?: string;
+
   /** Optional HTTP headers from the callback request. */
   headers?: Record<string, string>;
 }

@@ -100,7 +100,17 @@ function toPaymentWebhookLog(l: {
 }
 
 export const recordStore = {
-  async createPayment(amountTwd: number = FIRST_REPORT_PRICE_TWD): Promise<{ payment: Payment; analysis: Analysis }> {
+  async createPayment(
+    amountTwd: number = FIRST_REPORT_PRICE_TWD,
+    providerData?: {
+      /** Provider name (default "mock"). */
+      providerName?: string;
+      /** Provider-side order ID. */
+      providerPaymentId?: string | null;
+      /** Provider create-order raw response JSON string. */
+      providerRawResponse?: string | null;
+    },
+  ): Promise<{ payment: Payment; analysis: Analysis }> {
     const paymentId = genId("pay");
     const analysisId = genId("ana");
     const submissionId = genId("sub");
@@ -109,7 +119,13 @@ export const recordStore = {
     // Sequential creates: avoids prisma.$transaction timeout with Neon WebSocket adapter.
     // These three INSERTs are independent and do not need atomic wrapping.
     const p = await prisma.payment.create({
-        data: { id: paymentId, status: "pending", used: false, usedAt: null, createdAt: now, paidAt: null, amountTwd, providerName: "mock", providerPaymentId: null, providerRawResponse: null },
+        data: {
+          id: paymentId, status: "pending", used: false, usedAt: null, createdAt: now, paidAt: null,
+          amountTwd,
+          providerName: providerData?.providerName ?? "mock",
+          providerPaymentId: providerData?.providerPaymentId ?? null,
+          providerRawResponse: providerData?.providerRawResponse ?? null,
+        },
       });
       await prisma.submission.create({
         data: { id: submissionId, paymentId, status: "pending", idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "", createdAt: now },
