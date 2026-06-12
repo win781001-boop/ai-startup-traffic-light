@@ -133,6 +133,22 @@ export const recordStore = {
     return toPayment(updated);
   },
 
+  /**
+   * Webhook 專用付款確認方法。
+   * 僅在 payment 為 pending 狀態時更新為 paid，
+   * 並同時寫入 webhook 提供的 providerName / providerPaymentId。
+   * 不改既有 confirmPayment 行為。
+   */
+  async confirmPaymentByWebhook(paymentId: string, options: { providerPaymentId: string; providerName: string }): Promise<Payment | null> {
+    const p = await prisma.payment.findUnique({ where: { id: paymentId } });
+    if (!p || p.status !== "pending") return null;
+    const updated = await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: "paid", paidAt: new Date(), providerName: options.providerName, providerPaymentId: options.providerPaymentId },
+    });
+    return toPayment(updated);
+  },
+
   async getPayment(id: string): Promise<Payment | null> {
     const p = await prisma.payment.findUnique({ where: { id } });
     if (!p) return null;
