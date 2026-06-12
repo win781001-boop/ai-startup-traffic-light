@@ -1,4 +1,4 @@
-﻿# AI創業紅綠燈 真金流串接設計文件
+# AI創業紅綠燈 真金流串接設計文件
 
 > 版本：v0.14
 > 建立日期：2026-06-09
@@ -31,10 +31,10 @@
 | **Submission** | 使用者提交的前三題內容（點子、市場、動機） |
 | **Analysis** | 包含完整判定資料，對應一個 submission + 後三題 |
 | **Payment.used** | 標記付款是否已被使用，true 表示已產生 completed 報告 |
-| **needs_revision** | 輸入資訊不足時的狀態，允許使用者修改後重新提交 |
+| **needs_revision** | 輸入資訊不足時的狀態，允許使用者修改後重新提交。不消耗付款資格（used=false），但消耗一次 attempt |
 | **completed** | 判定完成狀態，產生紅黃綠燈與完整報告 |
-| **system_error** | 系統異常狀態，不消耗付款資格與 revision attempt |
-| **attempts_exhausted** | revisions 用完（3 次），無法再提交 |
+| **system_error** | 系統異常狀態，不消耗付款資格與 revision attempt（attempt rollback） |
+| **attempts_exhausted** | revisions 用完（3 次），無法再提交。不消耗付款資格（used=false） |
 
 ---
 
@@ -50,31 +50,51 @@
 
 ---
 
-## 4. 建議付款狀態
+## 4. 付款狀態（目前 mock 階段）
+
+> **注意：** Payment.status 的型別中 ailed 與 expired 已定義但目前尚未實作寫入邏輯。預計在真實金流 provider 階段啟用。
+> used 不是 Payment.status 的值，而是獨立的 Payment.used boolean 欄位（true = 已用於產生 completed 報告）。
+
+### 目前實際使用（mock 階段）
 
 | 狀態 | 說明 |
 |------|------|
-| **pending** | 付款訂單已建立，使用者尚未完成付款（或付款處理中） |
-| **paid** | 金流通知付款成功，使用者可以 submit-analysis |
-| **failed** | 金流通知付款失敗，不可 submit-analysis |
-| **expired** | 訂單超過有效時間未完成付款，自動失效 |
-| **refunded** | 已退款，紀錄保留供對帳 |
-| **used** | 付款已用於產生 completed 報告，不可重複使用 |
+| **pending** | 付款訂單已建立，使用者尚未完成付款（create-payment 初始值） |
+| **paid** | 使用者已點擊確認付款（confirm-payment 寫入，mock 直接設定為 paid） |
 
-> 註：paid → used 為單向轉換。一筆 paid 的付款最多只能轉為一次 used。
+### 預留但尚未實作（真金流後啟用）
+
+| 狀態 | 說明 |
+|------|------|
+| **failed** | 金流通知付款失敗，不可 submit-analysis。目前 mock 階段不會寫入 |
+| **expired** | 訂單超過有效時間未完成付款，自動失效。目前 mock 階段不會寫入 |
+| **refunded** | 已退款，紀錄保留供對帳。尚未定義在型別中，未來可新增 |
+
+### Payment.used 規則
+
+Payment.used（boolean）是獨立的消耗旗標：
+
+- used = true：此付款已用於產生一份 completed 報告，不可再使用
+- used = false：尚未使用（含 pending / needs_revision / failed_system_error / attempts_exhausted）
+- paid → used 為單向轉換。一筆 paid 的付款最多只能轉為一次 used
 
 ---
 
-## 5. 建議 analysis 狀態
+## 5. Analysis 狀態
 
-| 狀態 | 說明 |
-|------|------|
-| **pending** | 使用者已提交後三題，分析尚未開始 |
-| **processing** | AI 正在分析中（可能需等待 LLM 回應） |
-| **completed** | 分析完成，產生完整報告（紅黃綠燈 + judgmentId） |
-| **needs_revision** | 輸入資訊不足，需使用者修改後重新提交 |
-| **failed_system_error** | 系統異常導致分析失敗，不扣 attempt |
-| **attempts_exhausted** | 3 次 revision（含初始提交）用完，無法再提交 |
+> **注意：** 型別中曾定義 ejected_invalid_idea / ejected_low_information / ejected_unsupported，但目前程式碼已使用統一的 
+eeds_revision 處理所有內容驗證失敗情境，前述三個狀態已移除。
+
+| 狀態 | 說明 | 消耗 payment？ | 消耗 attempt？ |
+|------|------|---------------|---------------|
+| **pending** | create-payment 初始狀態，尚未 submit | 否 | 否 |
+| **submitted** | submit-analysis 呼叫 tryClaimAnalysis 成功後設定，正在處理中 | 否 | +1（已計入 attemptCount） |
+| **completed** | 分析完成，產生完整報告（紅黃綠燈） | 是（used=true） | 已計入 |
+| **needs_revision** | 輸入資訊不足（非法內容、非商業點子、資訊不足），需使用者修改後重新提交 | 否（used=false） | 是（消耗一次 attempt） |
+| **failed_system_error** | 系統異常（AI 服務 timeout / 500 / 無法解析），attempt 會 rollback | 否（used=false） | 否（rollback） |
+| **attempts_exhausted** | 3 次 attempt（含初始提交）用完，無法再提交 | 否（used=false） | 已達上限 |
+
+> 註：attempt 總次數上限為 3（maxAttempts=3），記錄在 Analysis.attemptCount 中。剩餘次數 = maxAttempts - attemptCount。
 
 ---
 

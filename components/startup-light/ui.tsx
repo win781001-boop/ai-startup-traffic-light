@@ -7,9 +7,6 @@ import type { ReactNode } from "react";
 export const STATUS_LABEL: Record<string, string> = {
   submitted: "已提交",
   completed: "已完成",
-  rejected_invalid_idea: "非商業點子",
-  rejected_low_information: "資訊不足",
-  rejected_unsupported: "不支援的內容",
   failed_system_error: "系統錯誤",
   attempts_exhausted: "已達判定次數上限",
   needs_revision: "需補充內容",

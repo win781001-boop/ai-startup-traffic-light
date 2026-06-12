@@ -1,4 +1,11 @@
-export interface Payment {
+﻿export interface Payment {
+  /**
+   * Payment lifecycle status.
+   *
+   * Currently used in mock phase: `pending` → `paid`.
+   * `failed` and `expired` are reserved for real payment provider integration (not yet implemented).
+   * `refunded` may be added later for customer service workflows.
+   */
   id: string;
   status: "pending" | "paid" | "failed" | "expired";
   used: boolean;
@@ -24,9 +31,6 @@ export interface Analysis {
     | "submitted"
     | "completed"
     | "needs_revision"
-    | "rejected_invalid_idea"
-    | "rejected_low_information"
-    | "rejected_unsupported"
     | "failed_system_error" | "attempts_exhausted";
   signal: "red" | "yellow" | "green" | null;
   hasSignal: boolean;
