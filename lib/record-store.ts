@@ -1,5 +1,6 @@
 ﻿import { prisma } from "./prisma";
 import type { Payment, Analysis, Feedback } from "./types";
+import { FIRST_REPORT_PRICE_TWD } from "./pricing";
 
 function genId(prefix: string): string {
   const n = Date.now();
@@ -17,11 +18,19 @@ function toPayment(p: {
   usedAt: Date | null;
   createdAt: Date;
   paidAt: Date | null;
+  amountTwd: number;
+  providerName: string;
+  providerPaymentId: string | null;
+  providerRawResponse: string | null;
 }): Payment {
   return {
     id: p.id, status: p.status as Payment["status"], used: p.used,
     usedAt: p.usedAt?.toISOString() ?? null, createdAt: p.createdAt.toISOString(),
     paidAt: p.paidAt?.toISOString() ?? null,
+    amountTwd: p.amountTwd,
+    providerName: p.providerName,
+    providerPaymentId: p.providerPaymentId ?? null,
+    providerRawResponse: p.providerRawResponse ?? null,
   };
 }
 
@@ -52,7 +61,7 @@ function toAnalysis(a: {
 }
 
 export const recordStore = {
-  async createPayment(): Promise<{ payment: Payment; analysis: Analysis }> {
+  async createPayment(amountTwd: number = FIRST_REPORT_PRICE_TWD): Promise<{ payment: Payment; analysis: Analysis }> {
     const paymentId = genId("pay");
     const analysisId = genId("ana");
     const submissionId = genId("sub");
@@ -61,7 +70,7 @@ export const recordStore = {
     // Sequential creates: avoids prisma.$transaction timeout with Neon WebSocket adapter.
     // These three INSERTs are independent and do not need atomic wrapping.
     const p = await prisma.payment.create({
-        data: { id: paymentId, status: "pending", used: false, usedAt: null, createdAt: now, paidAt: null },
+        data: { id: paymentId, status: "pending", used: false, usedAt: null, createdAt: now, paidAt: null, amountTwd, providerName: "mock", providerPaymentId: null, providerRawResponse: null },
       });
       await prisma.submission.create({
         data: { id: submissionId, paymentId, status: "pending", idea: "", targetUser: "", problem: "", pricing: "", firstVersion: "", buildTime: "", createdAt: now },

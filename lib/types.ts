@@ -12,6 +12,15 @@
   usedAt: string | null;
   createdAt: string;
   paidAt: string | null;
+  // ─── Real payment provider fields (Phase 2A) ───
+  // amountTwd: 應收款金額，webhook 核對用
+  // providerName: 金流 provider 名稱（目前預設 mock）
+  // providerPaymentId: 金流端訂單編號（真金流後使用）
+  // providerRawResponse: provider create-order 原始回傳
+  amountTwd: number;
+  providerName: string;
+  providerPaymentId: string | null;
+  providerRawResponse: string | null;
 }
 
 export interface Analysis {

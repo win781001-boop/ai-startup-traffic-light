@@ -1,6 +1,6 @@
 # AI創業紅綠燈 真金流串接設計文件
 
-> 版本：v0.14
+> 版本：v0.22
 > 建立日期：2026-06-09
 > 用途：正式金流串接前的完整設計文件，釐清 payment / analysis / webhook / refund / duplicate handling 規則
 
@@ -77,6 +77,21 @@ Payment.used（boolean）是獨立的消耗旗標：
 - used = true：此付款已用於產生一份 completed 報告，不可再使用
 - used = false：尚未使用（含 pending / needs_revision / failed_system_error / attempts_exhausted）
 - paid → used 為單向轉換。一筆 paid 的付款最多只能轉為一次 used
+
+### Phase 2A 已預備的金流欄位
+
+下列欄位已新增至 Payment model（prisma/schema.prisma 與 lib/types.ts），但 **mock flow 完全不受影響**（所有新欄位皆有 @default 或 nullable）：
+
+| 欄位 | 型別 | 預設值 | 用途 |
+|------|------|--------|------|
+| mountTwd | Int | 49 | 應收款金額（TWD），用於未來 webhook 金額核對。以 @default(49) 讓既有 mock 資料自動補上 |
+| providerName | String | "mock" | 處理此付款的金流 provider。目前預設 "mock"，真金流 provider 階段改為 "newebpay" 等 |
+| providerPaymentId | String? | 
+ull | 金流 provider 端的訂單編號。真金流後由 create-payment 寫入，webhook callback 時用於查詢對應 payment |
+| providerRawResponse | String? | 
+ull | provider create-order 的原始回傳（JSON 字串），客服除錯與對帳用 |
+
+> PaymentWebhookLog model 尚未新增（留到 webhook endpoint phase）。
 
 ---
 

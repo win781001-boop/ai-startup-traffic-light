@@ -7,12 +7,22 @@ datasource db {
 }
 
 model Payment {
-  id        String   @id
-  status    String   @default("pending")
-  used      Boolean  @default(false)
+  id        String    @id
+  status    String    @default("pending")
+  used      Boolean   @default(false)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   paidAt    DateTime?
+
+  // ─── Real payment provider fields (Phase 2A) ───
+  // amountTwd: 應收款金額（TWD），用於 webhook 金額核對
+  // providerName: 處理此付款的金流 provider（目前預設 mock）
+  // providerPaymentId: 金流 provider 端的訂單編號（真金流後使用）
+  // providerRawResponse: provider create-order 原始回傳（客服除錯／對帳用）
+  amountTwd           Int     @default(49)
+  providerName        String  @default("mock")
+  providerPaymentId   String?
+  providerRawResponse String?
 
   submissions Submission[]
   analyses    Analysis[]
@@ -46,8 +56,8 @@ model Analysis {
   errorReason   String?
   createdAt     DateTime  @default(now())
   completedAt   DateTime?
-  attemptCount  Int      @default(0)
-  maxAttempts   Int      @default(3)
+  attemptCount  Int       @default(0)
+  maxAttempts   Int       @default(3)
 
   submission Submission @relation(fields: [submissionId], references: [id])
   payment    Payment    @relation(fields: [paymentId], references: [id])
@@ -64,7 +74,6 @@ model ErrorReport {
   screenshotSizeBytes Int
   createdAt           DateTime @default(now())
 }
-
 
 model Feedback {
   id         String   @id @default(cuid())
