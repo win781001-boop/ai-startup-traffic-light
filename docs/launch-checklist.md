@@ -237,7 +237,16 @@
 - [ ] 主頁不呼叫 confirm-payment
 - [ ] 主頁不更新 Payment.status
 - [ ] submit-analysis 的 payment.status === paid 檢查未被繞過
-- [ ] create-payment 尚未切換 NewebPay（Prototype 3P 處理）
+- [ ] create-payment PAYMENT_PROVIDER=mock 時回應不含 formHtml（既有流程不變）
+- [ ] create-payment PAYMENT_PROVIDER=newebpay 時回應含 formHtml
+- [ ] formHtml 含 MerchantOrderNo 對應 paymentId
+- [ ] formHtml ReturnURL 指向 /payment/result?paymentId=&analysisId=
+- [ ] formHtml NotifyURL 指向 /api/payment-webhook
+- [ ] formHtml 不含 HashKey / HashIV
+- [ ] create-payment 回應不含 providerRawResponse
+- [ ] create-payment 不更新 Payment.status
+- [ ] create-payment 不呼叫 confirmPayment / webhook
+- [ ] create-payment 尚未切換 NewebPay（Phase 3P-C 處理 formHtml submit + PaymentPanel）
 - [ ] ReturnURL 尚未正式承接（Prototype 3P 處理）
 - [ ] verifyCallback 未完成前不可開 production
 - [ ] app/api/create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
@@ -284,6 +293,7 @@
 ---
 
 **檢查人員簽名：** ____________________ **日期：** ____________________
+
 
 
 

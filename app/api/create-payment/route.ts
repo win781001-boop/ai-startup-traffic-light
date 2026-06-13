@@ -3,9 +3,51 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getPaymentProvider } from "@/lib/payments";
 import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
+/**
+ * POST /api/create-payment
+ *
+ * Creates a payment order. Provider selection depends on PAYMENT_PROVIDER env:
+ *   - "newebpay" → uses NewebPay MPG, returns formHtml
+ *   - unset / "mock" → uses mock provider (existing behavior, no formHtml)
+ *
+ * NewebPay flow:
+ *   1. Create Payment record (pending) with auto-generated paymentId
+ *   2. Call newebpayProvider.createPayment() with paymentId as merchantOrderNo
+ *   3. Return formHtml so the frontend (or future PaymentPanel) can redirect
+ *
+ * Mock flow (unchanged):
+ *   1. Call mockProvider.createPayment()
+ *   2. Create Payment + Analysis records
+ *   3. Return safe payment fields
+ */
+
 export interface CreatePaymentResponse {
-  payment: { id: string; status: string; used: boolean; usedAt: string | null; createdAt: string; paidAt: string | null };
+  payment: {
+    id: string;
+    status: string;
+    used: boolean;
+    usedAt: string | null;
+    createdAt: string;
+    paidAt: string | null;
+  };
   analysisId: string;
+  /** Present only when PAYMENT_PROVIDER=newebpay. */
+  formHtml?: string;
+}
+
+/**
+ * Derive the application base URL for constructing NotifyURL / ReturnURL.
+ *
+ * Priority:
+ *   1. APP_BASE_URL (explicit env var)
+ *   2. VERCEL_URL / VERCEL_BRANCH_URL (Vercel deployment, needs https:// prefix)
+ *   3. http://localhost:3000 (local dev fallback)
+ */
+function getBaseUrl(): string {
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.VERCEL_BRANCH_URL) return `https://${process.env.VERCEL_BRANCH_URL}`;
+  return "http://localhost:3000";
 }
 
 export async function POST(request: Request) {
@@ -19,6 +61,36 @@ export async function POST(request: Request) {
   }
 
   const amountTwd = FIRST_REPORT_PRICE_TWD;
+  const providerName = process.env.PAYMENT_PROVIDER === "newebpay" ? "newebpay" : "mock";
+
+  if (providerName === "newebpay") {
+    // ─── NewebPay flow ───
+    // 1. Create Payment + Analysis records first (gets auto-generated IDs)
+    const { payment, analysis } = await recordStore.createPayment(amountTwd, {
+      providerName: "newebpay",
+    });
+
+    // 2. Call NewebPay provider with paymentId as merchantOrderNo
+    const baseUrl = getBaseUrl();
+    const provider = getPaymentProvider("newebpay");
+    const providerResult = await provider.createPayment({
+      amountTwd,
+      description: "AI創業紅綠燈 首次完整報告",
+      merchantOrderNo: payment.id,
+      notifyUrl: `${baseUrl}/api/payment-webhook`,
+      returnUrl: `${baseUrl}/payment/result?paymentId=${payment.id}&analysisId=${analysis.id}`,
+    });
+
+    // 3. Whitelist safe fields — never expose HashKey/HashIV/TradeInfo/TradeSha to client
+    const { amountTwd: _amt, providerName: _pn, providerPaymentId, providerRawResponse, ...safePayment } = payment;
+    return Response.json({
+      payment: safePayment,
+      analysisId: analysis.id,
+      formHtml: providerResult.formHtml,
+    });
+  }
+
+  // ─── Mock flow (unchanged) ───
   const provider = getPaymentProvider("mock");
   const providerResult = await provider.createPayment({
     amountTwd,
@@ -32,6 +104,7 @@ export async function POST(request: Request) {
   });
 
   // Whitelist only the fields safe for the client — do not expose internal provider fields.
-  const { amountTwd: _amt, providerName, providerPaymentId, providerRawResponse, ...safePayment } = payment;
+  const { amountTwd: _amt, providerName: _pn2, providerPaymentId, providerRawResponse, ...safePayment } = payment;
   return Response.json({ payment: safePayment, analysisId: analysis.id });
 }
+

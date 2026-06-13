@@ -766,7 +766,8 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 | **[x] Phase 3N-R-B** | payment-webhook route 整合 verifyCallback + pending → paid（已實作） | 是 | 否 |
 | **[x] Phase 3O-B** | payment-status API + payment result page（已實作） | 是 | 否 |
 | **[x] Phase 3O-C** | 主頁承接 /?paymentId=&analysisId= query handoff（已實作） | 是 | 否 |
-| **Phase 3P** | sandbox end-to-end 測試（創單→付款→notify→submit 完整流程） | 是 | 否 |
+| **[x] Phase 3P-B** | create-payment 支援 NewebPay provider formHtml 回傳（已實作） | 是 | 否 |
+| **Phase 3P-C** | PaymentPanel 前端導流（formHtml submit + confirm 按鈕隱藏） | 是 | 否 |
 | **Phase 3Q** | production launch checklist + guard 驗證 + 文件最終確認 | 是 | ✅ 可上線 |
 
 ---
@@ -1119,3 +1120,53 @@ Phase 3O-C 讓 `app/page.tsx` 在收到 `?paymentId=xxx&analysisId=yyy` URL quer
 - [x] `app/page.tsx` — URL query handoff + payment-status API 查詢 + 狀態 UI
 - [x] `docs/payment-integration-plan.md` — 本文件更新
 - [x] `docs/launch-checklist.md` — 補上 query handoff 檢查項
+
+
+### 22.8 Phase 3P-B — create-payment NewebPay Provider FormHtml（2026-06-13）
+
+Phase 3P-B 讓 `/api/create-payment` 依 `PAYMENT_PROVIDER` 環境變數選擇 provider。
+
+**Provider 選擇邏輯：**
+
+```
+PAYMENT_PROVIDER === "newebpay"
+  → getPaymentProvider("newebpay")
+  → 回傳包含 formHtml 的回應
+
+PAYMENT_PROVIDER 未設定 或 = "mock"
+  → getPaymentProvider("mock")
+  → 原有回應格式不變（不含 formHtml）
+```
+
+**NewebPay 流程（PAYMENT_PROVIDER=newebpay）：**
+
+1. `recordStore.createPayment()` 建立 Payment + Analysis（自動產生 paymentId）
+2. `newebpayProvider.createPayment()` 以 `payment.id` 作為 `merchantOrderNo`
+3. 傳入 `notifyUrl` = `${baseUrl}/api/payment-webhook`
+4. 傳入 `returnUrl` = `${baseUrl}/payment/result?paymentId=${payment.id}&analysisId=${analysis.id}`
+5. 回傳 `{ payment, analysisId, formHtml }`
+
+**baseUrl 推導方式（`getBaseUrl()` 輔助函式）：**
+
+| 優先 | 來源 | 範例值 |
+|------|------|--------|
+| 1 | `process.env.APP_BASE_URL` | `https://ai-startup-traffic-light.vercel.app` |
+| 2 | `process.env.VERCEL_URL`（自動補 https://） | `https://project.vercel.app` |
+| 3 | `http://localhost:3000`（fallback） | `http://localhost:3000` |
+
+**安全限制：**
+
+- 不更新 `Payment.status`
+- 不呼叫 `confirmPayment`
+- 不呼叫 `confirmPaymentByWebhook`
+- `formHtml` 不包含 HashKey / HashIV
+- 回應不包含 `providerRawResponse`
+- mock provider 的回應格式與欄位完全維持不變
+
+**Phase 3P-B 已完成項目：**
+
+- [x] `app/api/create-payment/route.ts` — provider 選擇 + NewebPay flow + baseUrl helper
+- [x] `scripts/create-payment-newebpay-test.mjs` — mock/newebpay 流程測試
+- [x] `scripts/test-create-payment-newebpay.ps1` — 測試執行腳本
+- [x] `docs/payment-integration-plan.md` — 本文件更新
+- [x] `docs/launch-checklist.md` — 補上 create-payment provider switch 檢查項
