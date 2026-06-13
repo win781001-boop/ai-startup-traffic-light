@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useCallback } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
 import type { SubmitAnalysisResponse } from "@/app/api/submit-analysis/route";
@@ -46,6 +46,7 @@ export default function Home() {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentFormHtml, setPaymentFormHtml] = useState<string | null>(null);
 
   // Full assessment state
   const [showFullForm, setShowFullForm] = useState(false);
@@ -123,6 +124,7 @@ export default function Home() {
     setPaymentConfirmed(false);
     setAnalysisData(null);
     setAnalysisResult(null);
+    setPaymentFormHtml(null);
     setFullError(null);
   }
 
@@ -170,6 +172,7 @@ export default function Home() {
       setPaymentData(data.payment);
       setAnalysisId(data.analysisId);
       setFullForm((prev) => ({ ...prev, idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
+      if (data.formHtml) setPaymentFormHtml(data.formHtml);
     } catch {
       setFullError("無法建立付款，請稍後再試。");
     } finally { setPaymentLoading(false); }
@@ -335,6 +338,7 @@ export default function Home() {
           confirmLoading={confirmLoading}
           boundaryError={boundaryError}
           analysisData={analysisData}
+          formHtml={paymentFormHtml}
           onPaymentClick={handlePaymentClick}
           onConfirmPayment={handleConfirmPayment}
         />

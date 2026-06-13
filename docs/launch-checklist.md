@@ -1,4 +1,4 @@
-﻿# AI創業紅綠燈 上線前測試清單
+# AI創業紅綠燈 上線前測試清單
 
 > 版本：v0.13
 > 建立日期：2026-06-09
@@ -240,13 +240,25 @@
 - [ ] create-payment PAYMENT_PROVIDER=mock 時回應不含 formHtml（既有流程不變）
 - [ ] create-payment PAYMENT_PROVIDER=newebpay 時回應含 formHtml
 - [ ] formHtml 含 MerchantOrderNo 對應 paymentId
-- [ ] formHtml ReturnURL 指向 /payment/result?paymentId=&analysisId=
-- [ ] formHtml NotifyURL 指向 /api/payment-webhook
-- [ ] formHtml 不含 HashKey / HashIV
-- [ ] create-payment 回應不含 providerRawResponse
-- [ ] create-payment 不更新 Payment.status
-- [ ] create-payment 不呼叫 confirmPayment / webhook
-- [ ] create-payment 尚未切換 NewebPay（Phase 3P-C 處理 formHtml submit + PaymentPanel）
+- [x] formHtml ReturnURL 指向 /payment/result?paymentId=&analysisId=
+- [x] formHtml NotifyURL 指向 /api/payment-webhook
+- [x] formHtml 不含 HashKey / HashIV
+- [x] create-payment 回應不含 providerRawResponse
+- [x] create-payment 不更新 Payment.status
+- [x] create-payment 不呼叫 confirmPayment / webhook
+- [x] create-payment 尚未切換 NewebPay（Phase 3P-C 處理 formHtml submit + PaymentPanel）- [ ] PaymentPanel 在無 formHtml 時仍顯示 mock confirm 按鈕
+- [ ] PaymentPanel 在有 formHtml 時顯示藍新導流訊息，不顯示 confirm 按鈕
+- [ ] PaymentPanel 在有 formHtml 時不呼叫 /api/confirm-payment
+- [ ] PaymentPanel 在有 formHtml 時嘗試 submit form
+- [ ] hasSubmittedRef 防止 form 被重複 submit
+- [ ] 找不到 form 時不會卡死
+- [ ] formHtml 來源只應是 /api/create-payment 回傳
+- [ ] ReturnURL 仍只導回 /payment/result，付款成功與否由 webhook 判定
+- [ ] mock create-payment / confirm-payment 流程未被破壞
+- [ ] 無 formHtml 時 mock 流程與之前完全相同
+- [ ] ./scripts/test-payment-panel-newebpay.ps1 通過（mock + newebpay 模式）
+
+
 - [ ] ReturnURL 尚未正式承接（Prototype 3P 處理）
 - [ ] verifyCallback 未完成前不可開 production
 - [ ] app/api/create-payment 尚未切換 PAYMENT_PROVIDER=newebpay

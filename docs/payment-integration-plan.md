@@ -1,4 +1,4 @@
-﻿# AI創業紅綠燈 真金流串接設計文件
+# AI創業紅綠燈 真金流串接設計文件
 
 > 版本：v0.24
 > 建立日期：2026-06-09
@@ -767,7 +767,7 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 | **[x] Phase 3O-B** | payment-status API + payment result page（已實作） | 是 | 否 |
 | **[x] Phase 3O-C** | 主頁承接 /?paymentId=&analysisId= query handoff（已實作） | 是 | 否 |
 | **[x] Phase 3P-B** | create-payment 支援 NewebPay provider formHtml 回傳（已實作） | 是 | 否 |
-| **Phase 3P-C** | PaymentPanel 前端導流（formHtml submit + confirm 按鈕隱藏） | 是 | 否 |
+| **[x] Phase 3P-C** | PaymentPanel 前端導流（formHtml submit + confirm 按鈕隱藏） | 是 | 否 |
 | **Phase 3Q** | production launch checklist + guard 驗證 + 文件最終確認 | 是 | ✅ 可上線 |
 
 ---
@@ -876,6 +876,67 @@ Phase 3N-R-B（已完成）已實作：
 ---
 
 
+
+## 23. Phase 3P-C — PaymentPanel formHtml Handoff（2026-06-13）
+
+### 23.1 概述
+
+Phase 3P-C 讓 PaymentPanel 在收到 create-payment 回應中的 formHtml 時，不再顯示 mock「確認付款」按鈕，而是顯示導向藍新付款頁的狀態訊息，並手動 submit formHtml 裡的 form。
+
+### 23.2 前端變更
+
+**app/page.tsx：**
+- 新增 paymentFormHtml state
+- handlePaymentClick 在收到 data.formHtml 時寫入 paymentFormHtml
+- updateRiskField 重置 paymentFormHtml（避免殘留）
+- 將 paymentFormHtml 作為 ormHtml prop 傳給 PaymentPanel
+
+**components/startup-light/PaymentPanel.tsx：**
+- 新增 ormHtml?: string | null prop
+- 新增 containerRef（注入 formHtml 的容器）和 hasSubmittedRef（防重複 submit）
+- useEffect 在 formHtml 存在時：
+  - 設定 hasSubmittedRef.current = true（僅一次）
+  - 100ms 後在 container 內查詢 <form> 並呼叫 orm.submit()
+- 條件渲染：
+  - ormHtml 存在 → 顯示「正在前往藍新金流付款頁…」藍色卡片，不顯示 confirm 按鈕
+  - ormHtml 不存在 → 維持原有 mock confirm 按鈕
+- 隱藏容器 <div ref={containerRef} dangerouslySetInnerHTML={{ __html: formHtml }} className="hidden" />
+
+### 23.3 安全設計
+
+| 措施 | 說明 |
+|------|------|
+| formHtml 來源 | 只應來自本機 /api/create-payment 回傳 |
+| HasSubmittedRef | 防止同一個 formHtml 被 submit 多次 |
+| 不呼叫 confirm-payment | NewebPay 流程完全繞過 mock confirm |
+| 不更新 Payment.status | 付款確認由 webhook 處理 |
+| mock 流程不變 | 無 formHtml 時完全維持既有行為 |
+
+### 23.4 測試
+
+**scripts/test-payment-panel-newebpay.ps1：**
+
+| # | 測試案例 | 預期結果 |
+|---|---------|----------|
+| M1 | Mock flow: create-payment 回傳不含 formHtml | response.formHtml === undefined |
+| M2 | Mock flow: confirm-payment 仍可正常運作 | confirm-payment 回 200 |
+| N1 | NewebPay flow: formHtml 存在且 payment/analysisId 完整 | formHtml + payment + analysisId 皆存在 |
+| N2 | NewebPay flow: confirm-payment 不應被呼叫（回 404） | Provider guard 使 confirm-payment 回 404 |
+| N3 | FormHtml 包含有效 form 標記 | form / action / submit 皆存在 |
+
+### 23.5 Phase 3P-C 已完成項目
+
+- [x] app/page.tsx — 新增 paymentFormHtml state、capture、prop pass
+- [x] components/startup-light/PaymentPanel.tsx — formHtml prop、auto-submit、conditional rendering
+- [x] scripts/test-payment-panel-newebpay.ps1 — 測試腳本
+- [x] docs/payment-integration-plan.md — 本文件更新
+- [x] docs/launch-checklist.md — 補上 formHtml handoff 檢查項
+
+### 23.6 尚未做的事
+
+- Production 環境仍不可啟用 PAYMENT_PROVIDER=newebpay（需 Phase 3Q）
+- 不執行 prisma db push（不需要）
+- 不修改 API routes
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
 
 
@@ -993,6 +1054,67 @@ NewebPay NotifyURL POST
 
 ---
 
+
+## 23. Phase 3P-C — PaymentPanel formHtml Handoff（2026-06-13）
+
+### 23.1 概述
+
+Phase 3P-C 讓 PaymentPanel 在收到 create-payment 回應中的 formHtml 時，不再顯示 mock「確認付款」按鈕，而是顯示導向藍新付款頁的狀態訊息，並手動 submit formHtml 裡的 form。
+
+### 23.2 前端變更
+
+**app/page.tsx：**
+- 新增 paymentFormHtml state
+- handlePaymentClick 在收到 data.formHtml 時寫入 paymentFormHtml
+- updateRiskField 重置 paymentFormHtml（避免殘留）
+- 將 paymentFormHtml 作為 ormHtml prop 傳給 PaymentPanel
+
+**components/startup-light/PaymentPanel.tsx：**
+- 新增 ormHtml?: string | null prop
+- 新增 containerRef（注入 formHtml 的容器）和 hasSubmittedRef（防重複 submit）
+- useEffect 在 formHtml 存在時：
+  - 設定 hasSubmittedRef.current = true（僅一次）
+  - 100ms 後在 container 內查詢 <form> 並呼叫 orm.submit()
+- 條件渲染：
+  - ormHtml 存在 → 顯示「正在前往藍新金流付款頁…」藍色卡片，不顯示 confirm 按鈕
+  - ormHtml 不存在 → 維持原有 mock confirm 按鈕
+- 隱藏容器 <div ref={containerRef} dangerouslySetInnerHTML={{ __html: formHtml }} className="hidden" />
+
+### 23.3 安全設計
+
+| 措施 | 說明 |
+|------|------|
+| formHtml 來源 | 只應來自本機 /api/create-payment 回傳 |
+| HasSubmittedRef | 防止同一個 formHtml 被 submit 多次 |
+| 不呼叫 confirm-payment | NewebPay 流程完全繞過 mock confirm |
+| 不更新 Payment.status | 付款確認由 webhook 處理 |
+| mock 流程不變 | 無 formHtml 時完全維持既有行為 |
+
+### 23.4 測試
+
+**scripts/test-payment-panel-newebpay.ps1：**
+
+| # | 測試案例 | 預期結果 |
+|---|---------|----------|
+| M1 | Mock flow: create-payment 回傳不含 formHtml | response.formHtml === undefined |
+| M2 | Mock flow: confirm-payment 仍可正常運作 | confirm-payment 回 200 |
+| N1 | NewebPay flow: formHtml 存在且 payment/analysisId 完整 | formHtml + payment + analysisId 皆存在 |
+| N2 | NewebPay flow: confirm-payment 不應被呼叫（回 404） | Provider guard 使 confirm-payment 回 404 |
+| N3 | FormHtml 包含有效 form 標記 | form / action / submit 皆存在 |
+
+### 23.5 Phase 3P-C 已完成項目
+
+- [x] app/page.tsx — 新增 paymentFormHtml state、capture、prop pass
+- [x] components/startup-light/PaymentPanel.tsx — formHtml prop、auto-submit、conditional rendering
+- [x] scripts/test-payment-panel-newebpay.ps1 — 測試腳本
+- [x] docs/payment-integration-plan.md — 本文件更新
+- [x] docs/launch-checklist.md — 補上 formHtml handoff 檢查項
+
+### 23.6 尚未做的事
+
+- Production 環境仍不可啟用 PAYMENT_PROVIDER=newebpay（需 Phase 3Q）
+- 不執行 prisma db push（不需要）
+- 不修改 API routes
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
 
 
@@ -1074,6 +1196,67 @@ Phase 3O-B 建立 ReturnURL 導回後需要的基礎設施：
 
 ---
 
+
+## 23. Phase 3P-C — PaymentPanel formHtml Handoff（2026-06-13）
+
+### 23.1 概述
+
+Phase 3P-C 讓 PaymentPanel 在收到 create-payment 回應中的 formHtml 時，不再顯示 mock「確認付款」按鈕，而是顯示導向藍新付款頁的狀態訊息，並手動 submit formHtml 裡的 form。
+
+### 23.2 前端變更
+
+**app/page.tsx：**
+- 新增 paymentFormHtml state
+- handlePaymentClick 在收到 data.formHtml 時寫入 paymentFormHtml
+- updateRiskField 重置 paymentFormHtml（避免殘留）
+- 將 paymentFormHtml 作為 ormHtml prop 傳給 PaymentPanel
+
+**components/startup-light/PaymentPanel.tsx：**
+- 新增 ormHtml?: string | null prop
+- 新增 containerRef（注入 formHtml 的容器）和 hasSubmittedRef（防重複 submit）
+- useEffect 在 formHtml 存在時：
+  - 設定 hasSubmittedRef.current = true（僅一次）
+  - 100ms 後在 container 內查詢 <form> 並呼叫 orm.submit()
+- 條件渲染：
+  - ormHtml 存在 → 顯示「正在前往藍新金流付款頁…」藍色卡片，不顯示 confirm 按鈕
+  - ormHtml 不存在 → 維持原有 mock confirm 按鈕
+- 隱藏容器 <div ref={containerRef} dangerouslySetInnerHTML={{ __html: formHtml }} className="hidden" />
+
+### 23.3 安全設計
+
+| 措施 | 說明 |
+|------|------|
+| formHtml 來源 | 只應來自本機 /api/create-payment 回傳 |
+| HasSubmittedRef | 防止同一個 formHtml 被 submit 多次 |
+| 不呼叫 confirm-payment | NewebPay 流程完全繞過 mock confirm |
+| 不更新 Payment.status | 付款確認由 webhook 處理 |
+| mock 流程不變 | 無 formHtml 時完全維持既有行為 |
+
+### 23.4 測試
+
+**scripts/test-payment-panel-newebpay.ps1：**
+
+| # | 測試案例 | 預期結果 |
+|---|---------|----------|
+| M1 | Mock flow: create-payment 回傳不含 formHtml | response.formHtml === undefined |
+| M2 | Mock flow: confirm-payment 仍可正常運作 | confirm-payment 回 200 |
+| N1 | NewebPay flow: formHtml 存在且 payment/analysisId 完整 | formHtml + payment + analysisId 皆存在 |
+| N2 | NewebPay flow: confirm-payment 不應被呼叫（回 404） | Provider guard 使 confirm-payment 回 404 |
+| N3 | FormHtml 包含有效 form 標記 | form / action / submit 皆存在 |
+
+### 23.5 Phase 3P-C 已完成項目
+
+- [x] app/page.tsx — 新增 paymentFormHtml state、capture、prop pass
+- [x] components/startup-light/PaymentPanel.tsx — formHtml prop、auto-submit、conditional rendering
+- [x] scripts/test-payment-panel-newebpay.ps1 — 測試腳本
+- [x] docs/payment-integration-plan.md — 本文件更新
+- [x] docs/launch-checklist.md — 補上 formHtml handoff 檢查項
+
+### 23.6 尚未做的事
+
+- Production 環境仍不可啟用 PAYMENT_PROVIDER=newebpay（需 Phase 3Q）
+- 不執行 prisma db push（不需要）
+- 不修改 API routes
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
 
 

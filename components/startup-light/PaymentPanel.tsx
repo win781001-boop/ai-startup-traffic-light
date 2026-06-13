@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { Spinner, formatTime } from "./ui";
+import { useRef, useEffect } from "react";
 import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
 interface PaymentPanelProps {
@@ -11,11 +12,28 @@ interface PaymentPanelProps {
   confirmLoading: boolean;
   boundaryError: string | null;
   analysisData: unknown;
+  formHtml?: string | null;
   onPaymentClick: () => void;
   onConfirmPayment: () => void;
 }
 
-export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, paymentLoading, confirmLoading, boundaryError, analysisData, onPaymentClick, onConfirmPayment }: PaymentPanelProps) {
+export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, paymentLoading, confirmLoading, boundaryError, analysisData, formHtml, onPaymentClick, onConfirmPayment }: PaymentPanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasSubmittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!formHtml || hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
+    // Small delay to ensure the DOM has rendered the injected HTML
+    const timer = setTimeout(() => {
+      const form = containerRef.current?.querySelector("form");
+      if (form) {
+        form.submit();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [formHtml]);
+
   return (
     <>
       {/* Payment Card */}
@@ -31,7 +49,14 @@ export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, payme
       )}
 
       {/* Payment Created Banner */}
-      {paymentData && !paymentConfirmed && !analysisData && (
+      {(paymentData && !paymentConfirmed && !analysisData && formHtml) ? (
+        <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
+          <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-blue-light/30 bg-blue-light/10 px-4 py-1.5 text-sm font-semibold text-blue-light">藍新金流</div>
+          <h2 className="mb-2 text-lg font-bold text-white">正在前往藍新金流付款頁…</h2>
+          <p className="mb-1 text-sm text-text-secondary">請不要關閉視窗。</p>
+          <p className="text-xs text-text-secondary/50">若未自動跳轉，請重新整理或返回上一頁重試。</p>
+        </section>
+      ) : (paymentData && !paymentConfirmed && !analysisData && (
         <section className="mb-8 rounded-2xl border border-border-subtle bg-gradient-to-br from-bg-card to-bg-card/60 p-6 backdrop-blur-sm sm:p-8">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">首次檢查 49 元</div>
           <p className="mb-4 text-sm leading-relaxed text-text-secondary">點擊下方按鈕模擬付款，確認後即可開始填寫完整判定資料。</p>
@@ -40,6 +65,11 @@ export function PaymentPanel({ showPayment, paymentData, paymentConfirmed, payme
             {confirmLoading ? <><Spinner />付款確認中…</> : "確認付款 " + FIRST_REPORT_PRICE_TWD + " 元"}
           </button>
         </section>
+      ))}
+
+      {/* Hidden formHtml container for NewebPay auto-submit */}
+      {formHtml && (
+        <div ref={containerRef} dangerouslySetInnerHTML={{ __html: formHtml }} className="hidden" aria-hidden="true" />
       )}
 
       {paymentConfirmed && !analysisData && (

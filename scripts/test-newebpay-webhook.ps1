@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   Test NewebPay NotifyURL webhook route integration.
   Starts a dev server with PAYMENT_PROVIDER=newebpay + test credentials,
@@ -21,7 +21,7 @@ Write-Host "Starting dev server with PAYMENT_PROVIDER=newebpay..." -ForegroundCo
 
 # Use quoted "set VAR=value" syntax to avoid trailing-space issues in cmd.exe.
 # This ensures PAYMENT_PROVIDER is exactly "newebpay", not "newebpay ".
-Start-Process -WindowStyle Minimized -FilePath "cmd.exe" -ArgumentList '/c set "PAYMENT_PROVIDER=newebpay" && set "NEWEBPAY_MERCHANT_ID=MS127874575" && set "NEWEBPAY_HASH_KEY=Fs5cX1TGqYM2PpdbE14a9H83YQSQF5jn" && set "NEWEBPAY_HASH_IV=C6AcmfqJILwgnhIP" && npm run dev' -WorkingDirectory $projectRoot
+Start-Process -WindowStyle Minimized -FilePath "cmd.exe" -ArgumentList '/c set "PAYMENT_PROVIDER=newebpay" && set "NEWEBPAY_MERCHANT_ID=MS127874575" && set "NEWEBPAY_HASH_KEY=Fs5cX1TGqYM2PpdbE14a9H83YQSQF5jn" && set "NEWEBPAY_HASH_IV=C6AcmfqJILwgnhIP" && set "NEWEBPAY_MPG_URL=https://ccore.newebpay.com/MPG/mpg_gateway" && npm run dev' -WorkingDirectory $projectRoot
 
 Write-Host "Waiting for dev server to be ready..." -ForegroundColor DarkGray
 Start-Sleep -Seconds 15
