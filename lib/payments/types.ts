@@ -1,5 +1,5 @@
 ﻿// ─── Payment Provider Abstraction Types ───
-// Phase 1: abstraction layer only — no real payment provider connected yet.
+// Phase 2: real-payment-ready types (formHtml, notifyUrl, returnUrl added).
 
 /** Supported payment provider names. */
 export type PaymentProviderName = "mock" | "newebpay" | "ecpay" | "linepay";
@@ -12,8 +12,13 @@ export interface CreatePaymentInput {
   description: string;
   /** Optional customer email for payment receipt. */
   customerEmail?: string;
-  /** Merchant-side order number (e.g. paymentId), required by some providers. */
+  /** Merchant-side order number (maps to our paymentId). Required by some providers. */
   merchantOrderNo?: string;
+
+  /** Asynchronous callback URL (provider sends webhook to this URL after payment). */
+  notifyUrl?: string;
+  /** Synchronous redirect URL (customer is redirected here after completing payment). */
+  returnUrl?: string;
 
   /** Optional metadata passed through to the provider (stored in raw response). */
   metadata?: Record<string, unknown>;
@@ -25,10 +30,30 @@ export interface CreatePaymentResult {
   provider: PaymentProviderName;
   /** Provider-side payment order ID. */
   providerPaymentId: string;
-  /** URL to redirect the customer for payment (null for mock). */
-  paymentUrl: string | null;
   /** Order status after creation. */
   status: "created" | "pending" | "failed";
+
+  /**
+   * URL for redirect-based payment providers (e.g. LINE Pay, PayPal).
+   * The customer is redirected to this URL to complete payment.
+   * Null for form-based providers (ECPay) or mock.
+   */
+  paymentUrl: string | null;
+
+  /**
+   * HTML form string for form-POST-based payment providers (e.g. ECPay).
+   * The frontend renders this as a hidden form and auto-submits it.
+   * Undefined for redirect-based providers or mock.
+   */
+  formHtml?: string;
+
+  /**
+   * Alternative redirect URL for providers that distinguish between
+   * payment page URL and post-payment redirect.
+   * Undefined if not applicable.
+   */
+  redirectUrl?: string;
+
   /** Raw provider response for debugging / record-keeping. */
   raw?: Record<string, unknown>;
 }
@@ -74,7 +99,7 @@ export interface PaymentProvider {
   /**
    * Create a payment order.
    * - Calls the provider API to create an order
-   * - Returns a payment URL for the customer to complete payment
+   * - Returns a payment URL (redirect) or form HTML (POST) for the customer to complete payment
    * - Does NOT create local Payment records (caller's responsibility)
    */
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;

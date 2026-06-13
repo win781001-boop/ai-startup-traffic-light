@@ -161,6 +161,15 @@
 - [ ] confirm-payment endpoint 有 production guard（NODE_ENV=production 時回 404）
 - [ ] confirm-payment endpoint 有 provider guard（非 mock provider 時回 404）
 - [ ] confirm-payment endpoint 有 rate limit（10 req / 10 min）
+- [ ] 真金流 webhook 透過 PaymentProvider.verifyCallback() 驗證簽章
+- [ ] 真金流 webhook 驗證付款金額與 Payment.amountTwd 相符
+- [ ] 真金流 webhook 驗證 providerPaymentId 可對應到內部 paymentId
+- [ ] 真金流 webhook idempotency（dedupeKey 防重複處理）
+- [ ] pending payment 過期（expired）與失敗（failed）處理規則已定義
+- [ ] create-payment 重複訂單（idempotency）策略已決定
+- [ ] PaymentProvider 支援 formHtml / notifyUrl / returnUrl 等正式金流欄位
+- [ ] ErrorReport / refund / payment incident 流程已定義
+
 
 
 - [ ] 金流測試環境通過

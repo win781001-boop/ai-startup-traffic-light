@@ -477,6 +477,125 @@ if (paymentProvider && paymentProvider !== "mock") {
 - **不要移除 production guard**，除非真金流 provider 整合完成
 - **不要移除 provider guard**，真金流階段應由 webhook 驅動付款確認
 - 正式上線前必須通過真金流串接前的完整 checklist（見 §14）
+
+## 18. 真金流上線前必補項目 — Phase 3H 付款風險盤點結論（2026-06-13）
+
+### 18.1 目前已完成的生產安全防線
+
+| 防線 | 狀態 |
+|------|------|
+| confirm-payment production guard（NODE_ENV=production 回 404） | ✅ 已補（Phase 3G） |
+| confirm-payment provider guard（非 mock provider 回 404） | ✅ 已補（Phase 3G） |
+| confirm-payment rate limit（10 req / 10 min） | ✅ 已補（Phase 3G） |
+| mock payment-webhook production guard（NODE_ENV=production 回 404） | ✅ 已補（Phase 3B） |
+| create-payment rate limit（10 req / 10 min） | ✅ 已補 |
+| submit-analysis rate limit（10 req / 10 min） | ✅ 已補 |
+| submit-analysis 驗證 payment 為 paid 後才允許提交 | ✅ 已補 |
+| submit-analysis 去重（checkDuplicateOrExhausted + tryClaimAnalysis） | ✅ 已補 |
+| submit-analysis 驗證 analysisId 與 paymentId 對應 | ✅ 已補 |
+| webhook dedup（dedupeKey unique constraint） | ✅ 已補 |
+| webhook 金額核對（mock 階段） | ✅ 已補 |
+| create-payment response 過濾 provider 內部欄位 | ✅ 已補 |
+
+### 18.2 可正式使用的 mock-only endpoint
+
+目前以下兩個 endpoint **僅供開發與測試使用，production 回 404**：
+
+| Endpoint | Production 行為 | 真金流時 |
+|----------|----------------|----------|
+| `/api/confirm-payment` | 404（不回 JSON body） | 不建議開放，應由 webhook 驅動 |
+| `/api/payment-webhook` | 404（不回 JSON body） | 改為真實 provider adapter，移除 production guard |
+
+### 18.3 真金流 webhook 強制要求
+
+真金流上線前，payment-webhook route 必須改為透過 PaymentProvider.verifyCallback() 驗證，而非直接比對 `signature === "mock-valid"`。
+
+**必須驗證的項目：**
+
+1. **簽章或檢查碼（signature / checksum）** — 使用 provider 官方 SDK 或指定演算法，不可自製
+2. **付款金額（amount）** — 比對 webhook payload 中的實際付款金額與 Payment.amountTwd
+3. **provider 端訂單編號（providerPaymentId / tradeNo）** — 確保可對應到內部 paymentId
+4. **事件類型（eventType）** — 只處理 `payment_paid` / `payment_success` 等成功事件
+
+**必須實作的保護措施：**
+
+5. **Idempotency** — 以 dedupeKey 為基礎的防重處理（已實作）。真金流階段需驗證 provider 是否會重送，以及 dedupeKey 是否涵蓋所有重送情境
+6. **Raw body 保留** — 將原始請求主體存入 PaymentWebhookLog.rawPayload（已實作）
+7. **所有回應皆回 200** — 即使驗證失敗也回 200，避免金流端因 HTTP 錯誤碼而重送（已實作）
+
+### 18.4 pending payment 過期與失敗處理規則
+
+目前 Payment.status 的 `failed` 與 `expired` 僅定義在型別中，**尚未有寫入邏輯**。真金流上線前必須補上：
+
+| 狀態 | 觸發時機 | 處理方式 |
+|------|----------|----------|
+| `failed` | webhook 通知付款失敗 | 更新 Payment.status = "failed"，不可 submit-analysis |
+| `expired` | payment 建立後超過有效時間未付款 | 建立定時任務或 webhook 通知過期；不可 submit-analysis |
+
+初期建議先支援 `failed`（由 webhook 通知驅動），`expired` 可在正式上線後補上。
+
+### 18.5 create-payment 重複訂單策略（記錄用，不在本階段實作）
+
+目前 create-payment 無 idempotency key，使用者重整頁面或重複點擊可能產生多筆 pending payment。
+
+建議真金流上線前評估以下方案（擇一）：
+
+- **方案 A：前端產生 idempotency key** — 前端在呼叫 create-payment 時帶入一個唯一鍵，後端檢查是否已處理過
+- **方案 B：Session-based 限制** — 同一 session 短時間內只允許一筆 pending payment
+- **方案 C：以已存在的 pending payment 取代重複建立** — 若該使用者已有未過期的 pending payment，直接回傳既有紀錄
+
+此項不在本階段實作，僅記錄為真金流前置討論項目。
+
+### 18.6 PaymentProvider 型別後續強化方向
+
+真金流 provider 接入前，`lib/payments/types.ts` 需要補上：
+
+| 需要強化的項目 | 說明 |
+|---------------|------|
+| `CreatePaymentResult.formHtml?: string` | ECPay 等 form POST 型 provider 需要回傳 HTML form 而非 URL |
+| `CreatePaymentInput.notifyUrl?: string` | 金流非同步通知回呼網址 |
+| `CreatePaymentInput.returnUrl?: string` | 付款完成後導回使用者的 URL |
+| `PaymentProvider.verifyCallback()` 整合至 webhook route | 目前 webhook route 未使用 verifyCallback |
+
+此項不改僅記錄，預計在 Phase 3I-B 或 Phase 3J 實作。
+
+### 18.7 Refund / ErrorReport 與付款事故處理
+
+#### 退款流程技術規格（真金流上線前需確認）
+
+| 項目 | 說明 |
+|------|------|
+| Payment.status 新增 `refunded` | 退款後設為 refunded，不可再用於 submit-analysis |
+| payment.used 與 refunded 的關係 | 若 payment.used=true 後退款，used 仍為 true（保留使用紀錄），payment.status 改為 refunded |
+| 退款由誰發起 | 客服手動處理（初期無自助退款） |
+
+#### ErrorReport 與付款流程關聯
+
+`ErrorReport` table 目前存在但未與付款流程文件連結。真金流階段應確保：
+
+- ErrorReport 可透過 paymentId 追蹤到對應的 Payment 與 PaymentWebhookLog
+- ErrorReport 的 issueType 應包含付款相關類型（例如 `payment_failed`、`payment_amount_mismatch`）
+- 客服可透過 paymentId 查詢完整的付款事故時間線
+
+#### 亂輸入仍依既有決策
+
+付款後亂輸入（非商業點子、低資訊、違法內容）仍依既有決策處理：
+
+- 不回復 payment.status 或 payment.used
+- 保留 submission / analysis record 供追查
+- 依退款政策判斷是否可退款（需客服介入）
+
+### 18.8 Phase 3I-A 已完成項目
+
+- [x] `docs/payment-integration-plan.md` — 新增 §18 真金流上線前必補項目
+- [x] `docs/launch-checklist.md` — 補上真金流前檢查項
+
+### 18.9 下一階段建議
+
+- **Phase 3I-B** — PaymentProvider types 強化（formHtml / notifyUrl / returnUrl），不接真金流
+- **Phase 3J** — provider-agnostic sandbox 研究（只讀），評估藍新 / ECPay / Line Pay 測試環境規格
+- **Phase 3K** — 真金流 provider sandbox 前置實作
+
 ---
 
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-12
