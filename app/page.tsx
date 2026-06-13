@@ -1,6 +1,5 @@
 ﻿"use client";
-
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
 import type { SubmitAnalysisResponse } from "@/app/api/submit-analysis/route";
 function isValidAnalysisResult(data: unknown): data is AnalysisResult {
@@ -60,8 +59,57 @@ export default function Home() {
 
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
+  // URL handoff state (from /payment/result or ReturnURL)
+  const [urlHandoffStatus, setUrlHandoffStatus] = useState<"none" | "loading" | "paid" | "pending" | "not_found" | "error">("none");
+  const [urlPaymentId, setUrlPaymentId] = useState<string | null>(null);
+  const [urlAnalysisId, setUrlAnalysisId] = useState<string | null>(null);
 
   function toggleExample(key: string) {
+  // On mount, check for paymentId / analysisId from URL query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("paymentId");
+    const aid = params.get("analysisId");
+
+    if (!pid) return;
+
+    setUrlPaymentId(pid);
+    setUrlAnalysisId(aid);
+    setUrlHandoffStatus("loading");
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/payment-status?paymentId=${encodeURIComponent(pid)}`);
+        if (res.status === 404) {
+          setUrlHandoffStatus("not_found");
+          return;
+        }
+        if (!res.ok) {
+          setUrlHandoffStatus("error");
+          return;
+        }
+        const data = await res.json();
+
+        if (data.status === "paid") {
+          const resolvedAnalysisId = data.analysisId || aid;
+          setUrlAnalysisId(resolvedAnalysisId);
+          setAnalysisId(resolvedAnalysisId);
+          setPaymentData({ id: pid, createdAt: data.paidAt || new Date().toISOString() });
+          setPaymentConfirmed(true);
+          setShowFullForm(true);
+          setUrlHandoffStatus("paid");
+          setFullError(null);
+        } else if (data.status === "pending") {
+          setUrlHandoffStatus("pending");
+        } else {
+          // failed / expired / unknown
+          setUrlHandoffStatus("error");
+        }
+      } catch {
+        setUrlHandoffStatus("error");
+      }
+    })();
+  }, []);
     setExpandedExamples((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
@@ -222,8 +270,44 @@ export default function Home() {
           本工具只檢查 AI 副業、AI 工具、網站、App、服務或內容產品點子；不處理一般搜尋、數學題、投資預測、即時新聞、聊天、翻譯、作業或非商業問題。
         </div>
 
-        {/* Precheck Form */}
-        {!showPayment && !analysisData && (
+        {/* URL Handoff: Loading */}
+        {urlHandoffStatus === "loading" && (
+          <div className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/60 p-8 text-center backdrop-blur-sm">
+            <div className="mb-4 flex justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+            </div>
+            <h2 className="text-lg font-semibold text-white">正在確認付款狀態</h2>
+            <p className="mt-2 text-sm text-text-secondary">請稍候…</p>
+          </div>
+        )}
+
+        {/* URL Handoff: Pending */}
+        {urlHandoffStatus === "pending" && (
+          <div className="mb-8 rounded-2xl border border-yellow-light/20 bg-yellow-light/[0.04] p-8 text-center backdrop-blur-sm">
+            <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-semibold text-yellow-light">處理中</div>
+            <h2 className="text-lg font-semibold text-white">付款仍在處理中</h2>
+            <p className="mt-2 text-sm text-text-secondary">我們尚未收到付款確認，請稍後重新整理此頁，或返回<a href={`/payment/result?paymentId=${encodeURIComponent(urlPaymentId || "")}${urlAnalysisId ? `&analysisId=${encodeURIComponent(urlAnalysisId)}` : ""}`} className="ml-1 text-yellow-light underline underline-offset-2 hover:text-yellow-light/80">付款結果頁</a>確認狀態。</p>
+          </div>
+        )}
+
+        {/* URL Handoff: Not found */}
+        {urlHandoffStatus === "not_found" && (
+          <div className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/60 p-8 text-center backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-white">找不到付款資訊</h2>
+            <p className="mt-2 text-sm text-text-secondary">查無此付款編號，請確認連結是否正確。</p>
+          </div>
+        )}
+
+        {/* URL Handoff: Error */}
+        {urlHandoffStatus === "error" && (
+          <div className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/60 p-8 text-center backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-white">發生錯誤</h2>
+            <p className="mt-2 text-sm text-text-secondary">無法確認付款狀態，請稍後再試。若問題持續，請重新建立付款。</p>
+          </div>
+        )}
+
+                {/* Precheck Form */}
+        {!showPayment && !analysisData && urlHandoffStatus === "none" && (
           <PrecheckForm
             idea={riskForm.idea}
             targetUser={riskForm.targetUser}
@@ -371,4 +455,5 @@ export default function Home() {
     </div>
   );
 }
+
 

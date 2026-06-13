@@ -765,6 +765,7 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 | **[x] Phase 3N-C** | verifyCallback 純解析（已實作） | 是 | 否 |
 | **[x] Phase 3N-R-B** | payment-webhook route 整合 verifyCallback + pending → paid（已實作） | 是 | 否 |
 | **[x] Phase 3O-B** | payment-status API + payment result page（已實作） | 是 | 否 |
+| **[x] Phase 3O-C** | 主頁承接 /?paymentId=&analysisId= query handoff（已實作） | 是 | 否 |
 | **Phase 3P** | sandbox end-to-end 測試（創單→付款→notify→submit 完整流程） | 是 | 否 |
 | **Phase 3Q** | production launch checklist + guard 驗證 + 文件最終確認 | 是 | ✅ 可上線 |
 
@@ -1073,3 +1074,48 @@ Phase 3O-B 建立 ReturnURL 導回後需要的基礎設施：
 ---
 
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
+
+
+### 22.7 Phase 3O-C — 主頁承接 paymentId / analysisId Query Handoff（2026-06-13）
+
+Phase 3O-C 讓 `app/page.tsx` 在收到 `?paymentId=xxx&analysisId=yyy` URL query 時，透過 `/api/payment-status` 確認付款狀態，安全地顯示後三題表單。
+
+**流程：**
+
+```
+使用者從 /payment/result（或 ReturnURL）到達 /?paymentId=xxx&analysisId=yyy
+     │
+     ├─ urlHandoffStatus = "loading" → 顯示「正在確認付款狀態」
+     │
+     ├─ GET /api/payment-status?paymentId=xxx
+     │
+     ├─ status === "paid"
+     │   ├─ 設定 paymentData / paymentConfirmed / showFullForm
+     │   ├─ analysisId 優先使用 API 回傳值（不信任 URL analysisId）
+     │   └─ 顯示 PaidQuestionForm → 使用者填寫後三題 → submit-analysis
+     │
+     ├─ status === "pending"
+     │   ├─ 顯示「付款仍在處理中」+ 連結回 /payment/result
+     │   └─ 不顯示 PaidQuestionForm
+     │
+     ├─ 404
+     │   └─ 顯示「找不到付款資訊」
+     │
+     └─ error
+         └─ 顯示「發生錯誤」
+```
+
+**安全檢查：**
+
+- 不能只因 URL 有 paymentId/analysisId 就進後三題
+- 必須等待 `/api/payment-status` 回傳 `status === "paid"` 才可進入
+- 不呼叫 confirm-payment
+- 不更新 Payment.status
+- 不繞過 submit-analysis 的 `payment.status === paid` 檢查
+- analysisId 優先使用 API 回傳值，URL analysisId 僅為 fallback
+
+**Phase 3O-C 已完成項目：**
+
+- [x] `app/page.tsx` — URL query handoff + payment-status API 查詢 + 狀態 UI
+- [x] `docs/payment-integration-plan.md` — 本文件更新
+- [x] `docs/launch-checklist.md` — 補上 query handoff 檢查項

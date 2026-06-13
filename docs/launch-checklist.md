@@ -229,6 +229,14 @@
 - [ ] /payment/result 頁面 polling 3 秒一次，最多 10 次
 - [ ] /payment/result 頁面逾時後停止輪詢並顯示處理中訊息
 - [ ] /payment/result 頁面不暴露 amount mismatch / signature 等內部細節
+- [ ] /?paymentId=&analysisId= query handoff 測試通過
+- [ ] paid paymentId 才能進 PaidQuestionForm
+- [ ] pending paymentId 顯示等待提示，不進後三題
+- [ ] invalid paymentId 顯示錯誤，不進後三題
+- [ ] URL analysisId 不可信，優先使用 API 回傳值
+- [ ] 主頁不呼叫 confirm-payment
+- [ ] 主頁不更新 Payment.status
+- [ ] submit-analysis 的 payment.status === paid 檢查未被繞過
 - [ ] create-payment 尚未切換 NewebPay（Prototype 3P 處理）
 - [ ] ReturnURL 尚未正式承接（Prototype 3P 處理）
 - [ ] verifyCallback 未完成前不可開 production
@@ -276,6 +284,7 @@
 ---
 
 **檢查人員簽名：** ____________________ **日期：** ____________________
+
 
 
 
