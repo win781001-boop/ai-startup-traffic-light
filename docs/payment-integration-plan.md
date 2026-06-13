@@ -750,10 +750,10 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 | [x] 實作 AES-256-CBC 加密 / SHA-256 helper | Phase 3L | AES 加密 TradeInfo + SHA-256 TradeSha |
 | [ ] `create-payment/route.ts` 依 PAYMENT_PROVIDER 選擇 provider | Phase 3M（待接） | 目前硬編碼 `getPaymentProvider("mock")`，provider createPayment 已可產 formHtml |
 | `payment-webhook/route.ts` 支援 application/x-www-form-urlencoded | Phase 3N | 目前只解析 JSON |
-| `payment-webhook/route.ts` 改為呼叫 provider.verifyCallback() | Phase 3N | 取代 inline mock 驗證 |
+| `payment-webhook/route.ts` 改為呼叫 provider.verifyCallback() | Phase 3N（下階段） | 取代 inline mock 驗證 |
 | 新增付款導回頁或狀態頁 | Phase 3O | 接收 ReturnURL redirect |
 | 新增 `NEWEBPAY_NOTIFY_URL` 與 `NEWEBPAY_RETURN_URL` env 或由 APP_BASE_URL 組合 | Phase 3K | 組 URL |
-| `PaymentWebhookLog.dedupeKey` 策略調整為 `newebpay:{TradeNo}` | Phase 3N | 取代 mock 的 `providerName:providerEventId` |
+| `PaymentWebhookLog.dedupeKey` 策略調整為 `newebpay:{TradeNo}` | Phase 3N（下階段） | 取代 mock 的 `providerName:providerEventId` |
 
 ### 19.7 後續階段拆分
 
@@ -762,7 +762,8 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 | **[x] Phase 3K** | NewebPay provider skeleton，只建檔案結構，不發 API 呼叫 | 是 | 否 |
 | **[x] Phase 3L** | 加密 / TradeInfo / TradeSha helper + 單元測試 | 是 | 否 |
 | **[x] Phase 3M** | NewebPay provider createPayment 已可產 formHtml，尚未接 create-payment route | 是 | 否 |
-| **Phase 3N** | payment-webhook / notify verifyCallback + pending → paid | 是 | 否 |
+| **[x] Phase 3N-C** | verifyCallback 純解析（已實作） | 是 | 否 |
+| **Phase 3N-R** | payment-webhook route 整合 verifyCallback + pending → paid | 是 | 否 |
 | **Phase 3O** | return page / payment status UX | 是 | 否 |
 | **Phase 3P** | sandbox end-to-end 測試（創單→付款→notify→submit 完整流程） | 是 | 否 |
 | **Phase 3Q** | production launch checklist + guard 驗證 + 文件最終確認 | 是 | ✅ 可上線 |
@@ -770,3 +771,102 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 ---
 
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-12
+
+## 20. Phase 3N-C — verifyCallback 純解析（2026-06-13）
+
+### 20.1 概述
+
+Phase 3N-C 實作 `newebpayProvider.verifyCallback()` 的純解析與驗證邏輯。
+
+**核心定位：** verifyCallback 只做以下工作：
+- 讀取 env（NEWEBPAY_MERCHANT_ID / HASH_KEY / HASH_IV）
+- 檢查 payload 必要欄位（MerchantID / TradeInfo / TradeSha / Status）
+- 驗證 TradeSha 簽章
+- 解密 TradeInfo（AES-256-CBC）
+- Parse decrypted TradeInfo（支援 JSON 與 URL-encoded）
+- 驗證 MerchantID 一致性
+- 提取 MerchantOrderNo / Amt / TradeNo / Status / PayTime / PaymentType
+- 轉換 Amt 為整數
+- 根據 Status 判斷付款成功或失敗
+- 回傳乾淨的 raw（不含 HashKey / HashIV / Card6No / Card4No）
+
+**verifyCallback 不做的事：**
+- 不查 DB
+- 不更新 Payment.status
+- 不建立 PaymentWebhookLog
+- 不打藍新 sandbox
+- 不改前端
+- 不檢查 amount match（留給 payment-webhook route 階段）
+- 不產生 dedupeKey（留給 payment-webhook route 階段）
+- 不呼叫 confirmPaymentByWebhook（留給 payment-webhook route 階段）
+
+### 20.2 ReturnURL 不可信原則
+
+verifyCallback 本身是純解析函式，不直接代表付款確認。ReturnURL redirect（使用者瀏覽器被導回）不可作為付款依據：
+
+- ReturnURL 可被偽造
+- 使用者可能在付款頁面關閉瀏覽器，ReturnURL 不會被呼叫
+- 唯一可信的付款來源是 NotifyURL callback（server-to-server）
+- NotifyURL callback 仍需透過 payment-webhook route 呼叫 verifyCallback，再進行 DB 寫入
+
+### 20.3 後續階段銜接
+
+Phase 3N-R（下一階段）將：
+1. 修改 `app/api/payment-webhook/route.ts` 改為呼叫 `newebpayProvider.verifyCallback()`
+2. 實作 amount match 比對（TradeInfo.Amt vs Payment.amountTwd）
+3. 實作 dedupeKey 產出（`newebpay:{TradeNo}`）
+4. 實作 Payment.status → paid / failed 更新
+5. 實作 PaymentWebhookLog 寫入
+6. 支援 application/x-www-form-urlencoded 的 webhook payload
+
+### 20.4 verifyCallback 回傳格式
+
+```typescript
+{
+  provider: "newebpay",
+  providerPaymentId: TradeNo | "not_verified",
+  paid: boolean,
+  amountTwd?: number,
+  raw: {
+    merchantOrderNo?: string,
+    tradeNo?: string,
+    status?: string,
+    payTime?: string,
+    amountTwd?: number,
+    paymentType?: string,
+    sanitizedPayload: Record<string, unknown>,  // 不含 Card6No / Card4No
+    reason?: string,  // 僅錯誤時存在
+  }
+}
+```
+
+### 20.5 Phase 3N-C 已完成項目
+
+- [x] `lib/payments/providers/newebpay.ts` — 實作 verifyCallback（env 檢查 / 簽章驗證 / 解密 / parse / 欄位提取 / 狀態判斷 / raw 安全過濾）
+- [x] `scripts/newebpay-verify-callback-test.mjs` — 13 個測試案例，56 個 assertion
+- [x] `scripts/test-newebpay-verify-callback.ps1` — 測試執行腳本
+- [x] `docs/payment-integration-plan.md` — 本文件更新
+- [x] `docs/launch-checklist.md` — 補上 verifyCallback 測試項目
+
+### 20.6 測試覆蓋
+
+| 測試案例 | 預期結果 |
+|----------|----------|
+| 缺 env | paid:false, reason=missing_env |
+| 缺必要欄位 | paid:false, reason=missing_field |
+| TradeSha 錯誤 | paid:false, reason=invalid_signature |
+| TradeInfo 解密失敗 | paid:false, reason=decrypt_failed |
+| JSON decrypted payload 成功解析 | paid:true, 正確 providerPaymentId/amountTwd |
+| URL-encoded decrypted payload 成功解析 | paid:true, 正確 providerPaymentId/amountTwd |
+| MerchantID mismatch | paid:false, reason=merchant_mismatch |
+| Amt 無法轉整數 | paid:false, reason=invalid_amount |
+| 非成功 Status | paid:false, 保留 providerPaymentId/amountTwd |
+| 成功 callback 所有欄位 | paid:true, provider=newebpay, providerPaymentId=TradeNo, amountTwd=Amt |
+| raw 不含 HashKey/HashIV | 安全 |
+| sanitizedPayload 不含 Card6No/Card4No | 安全 |
+| Amt 不存在 | paid:true（Status=SUCCESS 但無 Amt），amountTwd undefined |
+
+---
+
+
+**文件維護者：** ____________________ **最後更新日期：** 2026-06-13

@@ -198,6 +198,14 @@
 - [ ] NewebPay provider createPayment 測試通過（env 檢查、formHtml 安全、raw 安全）
 - [ ] formHtml 不包含 HashKey / HashIV
 - [ ] TradeInfo 不洩漏明文 MerchantOrderNo
+- [ ] verifyCallback invalid signature 測試通過
+- [ ] verifyCallback decrypt failed 測試通過
+- [ ] verifyCallback JSON parse 測試通過
+- [ ] verifyCallback URL-encoded parse 測試通過
+- [ ] verifyCallback amount parse 測試通過
+- [ ] verifyCallback status success / failed 判定測試通過
+- [ ] verifyCallback Card6No / Card4No 不保存於 sanitizedPayload
+- [ ] verifyCallback HashKey / HashIV 不洩漏於 raw
 - [ ] verifyCallback 未完成前不可開 production
 - [ ] app/api/create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
 
@@ -243,3 +251,4 @@
 ---
 
 **檢查人員簽名：** ____________________ **日期：** ____________________
+
