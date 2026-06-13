@@ -75,8 +75,15 @@ async function createPayment() {
 // ─── Test runner ───
 let passed = 0, failed = 0;
 
-function assert(cond, label) {
-  if (cond) { passed++; } else { failed++; console.log("  [FAIL] " + label); }
+function assert(cond, label, actual) {
+  if (cond) { passed++; } else {
+    failed++;
+    if (actual !== undefined) {
+      console.log("  [FAIL] " + label + " (got: " + JSON.stringify(actual) + ")");
+    } else {
+      console.log("  [FAIL] " + label);
+    }
+  }
 }
 
 function testLabel(n, desc) {
@@ -118,8 +125,8 @@ testLabel(1, "Form-urlencoded callback parse → route responds 200");
 
   const r = await sendValidCallback(payId);
   assert(r.status === 200, "response status is 200");
-  assert(r.data.ok === true, "ok is true");
-  assert(r.data.processed === true, "processed is true");
+  assert(r.data.ok === true, "ok is true", r.data);
+  assert(r.data.processed === true, "processed is true", r.data);
   console.log("  [PASS]");
 }
 
@@ -133,9 +140,9 @@ testLabel(2, "Success callback + amount match → processed:true");
   assert(!!payId, "paymentId exists");
 
   const r = await sendValidCallback(payId);
-  assert(r.status === 200, "status 200");
-  assert(r.data.processed === true, "processed is true");
-  assert(r.data.ok === true, "ok is true");
+  assert(r.status === 200, "status 200", r.status);
+  assert(r.data.processed === true, "processed is true", r.data);
+  assert(r.data.ok === true, "ok is true", r.data);
   console.log("  [PASS]");
 }
 
@@ -151,13 +158,13 @@ testLabel(3, "Success callback → providerPaymentId saved as TradeNo");
   // Build with a unique TradeNo
   const uniqueTradeNo = "NPTX_TRADENO_TEST_" + Date.now();
   const r = await sendValidCallback(payId, { TradeNo: uniqueTradeNo });
-  assert(r.status === 200, "status 200");
-  assert(r.data.processed === true, "processed is true");
+  assert(r.status === 200, "status 200", r.status);
+  assert(r.data.processed === true, "processed is true", r.data);
 
   // Duplicate check: same TradeNo should return duplicated
   const r2 = await sendValidCallback(payId, { TradeNo: uniqueTradeNo });
-  assert(r2.status === 200, "duplicate status 200");
-  assert(r2.data.duplicated === true, "duplicate callback returns duplicated:true");
+  assert(r2.status === 200, "duplicate status 200", r2.status);
+  assert(r2.data.duplicated === true, "duplicate callback returns duplicated:true", r2.data);
   console.log("  [PASS]");
 }
 
@@ -191,7 +198,7 @@ testLabel(4, "Invalid TradeSha → processed:false, reason=invalid_signature");
   const formBody = params.toString();
 
   const r = await apiPostForm("/api/payment-webhook", formBody);
-  assert(r.status === 200, "status 200");
+  assert(r.status === 200, "status 200", r.status);
   assert(r.data.processed === false, "processed is false");
   assert(r.data.reason === "invalid_signature", "reason is invalid_signature");
   console.log("  [PASS]");
@@ -227,7 +234,7 @@ testLabel(5, "Failed Status → processed:false, not_paid reason");
   const formBody = params.toString();
 
   const r = await apiPostForm("/api/payment-webhook", formBody);
-  assert(r.status === 200, "status 200");
+  assert(r.status === 200, "status 200", r.status);
   assert(r.data.processed === false, "processed is false");
   // The reason could be "not_paid" (decrypted Status=2 is not "1" or "SUCCESS")
   assert(r.data.reason !== undefined, "reason is present");
@@ -245,7 +252,7 @@ testLabel(6, "Amount mismatch → processed:false, reason=amount_mismatch");
 
   // Amt=999 but payment.amountTwd=49
   const r = await sendValidCallback(payId, { Amt: 999 });
-  assert(r.status === 200, "status 200");
+  assert(r.status === 200, "status 200", r.status);
   assert(r.data.processed === false, "processed is false");
   assert(r.data.reason === "amount_mismatch", "reason is amount_mismatch");
   console.log("  [PASS]");
@@ -258,7 +265,7 @@ testLabel(7, "Payment not found → processed:false, reason=payment_not_found");
 {
   const fakePayId = "pay_doesnotexist_" + Date.now();
   const r = await sendValidCallback(fakePayId);
-  assert(r.status === 200, "status 200");
+  assert(r.status === 200, "status 200", r.status);
   assert(r.data.processed === false, "processed is false");
   assert(r.data.reason === "payment_not_found", "reason is payment_not_found");
   console.log("  [PASS]");
@@ -277,13 +284,13 @@ testLabel(8, "Duplicate callback → duplicated:true, not reprocessed");
   // First call
   const r1 = await sendValidCallback(payId, { TradeNo: uniqueTradeNo });
   assert(r1.status === 200, "first call status 200");
-  assert(r1.data.processed === true, "first call processed:true");
+  assert(r1.data.processed === true, "first call processed:true", r1.data);
 
   // Second call with same TradeNo
   const r2 = await sendValidCallback(payId, { TradeNo: uniqueTradeNo });
   assert(r2.status === 200, "second call status 200");
-  assert(r2.data.duplicated === true, "second call duplicated:true");
-  assert(r2.data.processed === false, "second call processed:false");
+  assert(r2.data.duplicated === true, "second call duplicated:true", r2.data);
+  assert(r2.data.processed === false, "second call processed:false", r2.data);
   console.log("  [PASS]");
 }
 
@@ -304,3 +311,5 @@ console.log("\n===== Summary =====");
 console.log("Passed: " + passed);
 console.log("Failed: " + failed);
 if (failed > 0) process.exit(1);
+
+
