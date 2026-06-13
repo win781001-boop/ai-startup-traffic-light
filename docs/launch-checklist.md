@@ -206,6 +206,20 @@
 - [ ] verifyCallback status success / failed 判定測試通過
 - [ ] verifyCallback Card6No / Card4No 不保存於 sanitizedPayload
 - [ ] verifyCallback HashKey / HashIV 不洩漏於 raw
+- [ ] NewebPay webhook route tests（35 assertions）全部通過
+- [ ] mock webhook production guard 在 NODE_ENV=production 時仍回 404
+- [ ] PAYMENT_PROVIDER=newebpay 時 production 可處理 NotifyURL
+- [ ] NewebPay form-urlencoded callback parse 測試通過
+- [ ] NewebPay invalid signature → processed:false
+- [ ] NewebPay failed status → processed:false
+- [ ] NewebPay amount mismatch → processed:false
+- [ ] NewebPay payment_not_found → processed:false
+- [ ] NewebPay duplicate callback → duplicated:true，不重複更新
+- [ ] Route 層不自行解密/驗簽，全部透過 provider.verifyCallback()
+- [ ] paid:false 不更新 Payment.status
+- [ ] paid:true 後必須走 confirmPaymentByWebhook()，不可直接 update
+- [ ] ReturnURL 不可做為付款確認依據
+- [ ] create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
 - [ ] verifyCallback 未完成前不可開 production
 - [ ] app/api/create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
 
@@ -251,4 +265,5 @@
 ---
 
 **檢查人員簽名：** ____________________ **日期：** ____________________
+
 
