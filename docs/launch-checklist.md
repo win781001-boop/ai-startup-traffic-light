@@ -220,6 +220,17 @@
 - [ ] paid:true 後必須走 confirmPaymentByWebhook()，不可直接 update
 - [ ] ReturnURL 不可做為付款確認依據
 - [ ] create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
+- [ ] payment-status API 唯讀，不可更新 Payment.status
+- [ ] payment-status API 缺少 paymentId 時回 400
+- [ ] payment-status API payment 不存在時回 404
+- [ ] payment-status API 不回傳 providerRawResponse / webhook payload
+- [ ] payment-status API pending / paid 狀態正確
+- [ ] /payment/result 頁面在 paid 時顯示「開始填寫後三題」按鈕
+- [ ] /payment/result 頁面 polling 3 秒一次，最多 10 次
+- [ ] /payment/result 頁面逾時後停止輪詢並顯示處理中訊息
+- [ ] /payment/result 頁面不暴露 amount mismatch / signature 等內部細節
+- [ ] create-payment 尚未切換 NewebPay（Prototype 3P 處理）
+- [ ] ReturnURL 尚未正式承接（Prototype 3P 處理）
 - [ ] verifyCallback 未完成前不可開 production
 - [ ] app/api/create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
 
@@ -265,5 +276,6 @@
 ---
 
 **檢查人員簽名：** ____________________ **日期：** ____________________
+
 
 

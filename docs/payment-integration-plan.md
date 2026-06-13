@@ -764,7 +764,7 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 | **[x] Phase 3M** | NewebPay provider createPayment 已可產 formHtml，尚未接 create-payment route | 是 | 否 |
 | **[x] Phase 3N-C** | verifyCallback 純解析（已實作） | 是 | 否 |
 | **[x] Phase 3N-R-B** | payment-webhook route 整合 verifyCallback + pending → paid（已實作） | 是 | 否 |
-| **Phase 3O** | return page / payment status UX | 是 | 否 |
+| **[x] Phase 3O-B** | payment-status API + payment result page（已實作） | 是 | 否 |
 | **Phase 3P** | sandbox end-to-end 測試（創單→付款→notify→submit 完整流程） | 是 | 否 |
 | **Phase 3Q** | production launch checklist + guard 驗證 + 文件最終確認 | 是 | ✅ 可上線 |
 
@@ -821,7 +821,7 @@ Phase 3N-R-B（已完成）已實作：
 
 > **Phase 3N-R-C（文件更新與安全 review）** 已完成，見 §21。
 
-**下一階段：Phase 3O** — return page / payment status UX，接收 ReturnURL redirect。
+**下一階段：Phase 3P** — sandbox end-to-end 測試（創單→付款→notify→submit 完整流程）。在此之前，ReturnURL 不可作為付款確認依據（見 §20.2），create-payment 尚未切換到 NewebPay，正規 ReturnURL POST 承接留到 Phase 3P。
 在此之前，ReturnURL 不可作為付款確認依據（見 §20.2）。
 
 ### 20.4 verifyCallback 回傳格式
@@ -988,6 +988,87 @@ NewebPay NotifyURL POST
 - ReturnURL redirect 尚未實作（Phase 3O）
 - sandbox / production 真實付款測試尚未執行（Phase 3P）
 - 文件維護者簽名與 final launch 確認（Phase 3Q）
+
+---
+
+**文件維護者：** ____________________ **最後更新日期：** 2026-06-13
+
+
+## 22. Phase 3O-B — Payment Status API + Payment Result Page（2026-06-13）
+
+### 22.1 概述
+
+Phase 3O-B 建立 ReturnURL 導回後需要的基礎設施：
+
+1. **GET `/api/payment-status`** — 唯讀付款狀態查詢 API，不回寫 DB
+2. **`/payment/result`** — 付款結果頁面，顯示付款狀態並提供繼續流程的按鈕
+
+本階段不正式承接 NewebPay ReturnURL POST，也不改 create-payment / PaymentPanel。正規 formHtml submit 與 ReturnURL 參數帶法留到 Phase 3P。
+
+### 22.2 Payment Status API
+
+**端點：** `GET /api/payment-status?paymentId=xxx`
+
+**行為：**
+
+| 情境 | HTTP 狀態 | 回應 |
+|------|-----------|------|
+| `paymentId` 未提供 | 400 | `{ error: "缺少付款編號" }` |
+| Payment 不存在 | 404 | `{ error: "付款不存在" }` |
+| Payment 存在 | 200 | `{ paymentId, status, paidAt, amountTwd, analysisId }` |
+
+**安全限制：**
+
+- 只讀，不可更新 Payment.status
+- 不回傳 `providerRawResponse`
+- 不回傳 `providerPaymentId`
+- 不回傳 webhook raw payload
+- 不回傳 TradeInfo / TradeSha / card info / HashKey / HashIV
+- 不回傳 amount mismatch / signature 等 webhook 驗證細節
+
+### 22.3 Payment Result Page
+
+**路徑：** `/payment/result?paymentId=xxx&analysisId=xxx（可選）`
+
+**狀態與 UI：**
+
+| 狀態 | UI | 下一步 |
+|------|-----|--------|
+| **查詢中** | Spinner + 「查詢付款狀態中…」 | 自動 |
+| **pending**（輪詢中） | 「付款處理中，請稍候」含 spinner | 每 3 秒輪詢，最多 10 次 |
+| **pending**（逾時） | 「付款仍在處理中」+ 重新整理提示 | 回到首頁 |
+| **paid** | 「付款成功」+ 付款時間 + 金額 | 「開始填寫後三題」→ 導回 `/?paymentId=xxx&analysisId=yyy` |
+| **failed** | 「付款未完成」 | 回到首頁重新建立付款 |
+| **expired** | 「付款已逾期」 | 回到首頁 |
+| **not_found** | 「找不到付款資訊」 | 回到首頁 |
+| **error** | 「發生錯誤」 | 回到首頁 |
+
+**輪詢策略：** 3 秒間隔，最多 10 次（30 秒）。超過後停止輪詢並顯示逾時訊息。
+
+### 22.4 安全設計
+
+| 設計 | 說明 |
+|------|------|
+| ReturnURL 不可信 | 付款成功只能由 NotifyURL webhook 確認 |
+| payment-status 不回寫 DB | 僅查詢，無 side effect |
+| 頁面不顯示內部錯誤細節 | amount mismatch / signature 等不暴露給使用者 |
+| analysisId 優先使用 API 回傳值 | URL query 的 analysisId 僅作為 fallback |
+
+### 22.5 Phase 3O-B 已完成項目
+
+- [x] `app/api/payment-status/route.ts` — 唯讀付款狀態查詢 API
+- [x] `app/payment/result/page.tsx` — 付款結果頁（含 polling 邏輯）
+- [x] `scripts/test-payment-status.mjs` — 5 個測試案例
+- [x] `scripts/test-payment-status.ps1` — 測試執行腳本
+- [x] `docs/payment-integration-plan.md` — 本文件更新
+- [x] `docs/launch-checklist.md` — 補上 payment-status / payment-result 檢查項
+
+### 22.6 尚未做的事
+
+- create-payment 尚未切換到 NewebPay（formHtml 產出後自動 submit 到 MPG）
+- NewebPay ReturnURL POST 尚未正式承接（ReturnURL 設定與參數帶法）
+- PaymentPanel 尚未整合 NewebPay formHtml submit 按鈕
+- sandbox / production 真實付款測試（Phase 3P）
 
 ---
 
