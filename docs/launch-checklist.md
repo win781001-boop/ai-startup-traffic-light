@@ -80,6 +80,8 @@
 - [ ] submit-analysis rate limit 超過時回 429
 - [ ] 429 回傳 `error: rate_limited`
 - [ ] 429 有 `Retry-After` header
+- [ ] confirm-payment rate limit 超過時回 429
+- [ ] confirm-payment 429 有 Retry-After header
 
 ---
 
@@ -156,6 +158,11 @@
 - [ ] webhook production guard 正確（NODE_ENV=production 時回 404，不處理 payload）
 - [ ] 重複付款處理
 - [ ] 退款處理流程
+- [ ] confirm-payment endpoint 有 production guard（NODE_ENV=production 時回 404）
+- [ ] confirm-payment endpoint 有 provider guard（非 mock provider 時回 404）
+- [ ] confirm-payment endpoint 有 rate limit（10 req / 10 min）
+
+
 - [ ] 金流測試環境通過
 - [ ] 金流正式環境通過
 

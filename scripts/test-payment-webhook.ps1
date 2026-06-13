@@ -7,12 +7,17 @@
   webhook deduplication, signature validation, amount matching,
   and payment status update logic.
 
-.PARAMETER BaseUrl
-  Base URL of the local dev server (default: http://localhost:3000)
+  Each run uses a unique runId prefix for providerEventId / providerPaymentId
+  to avoid dedupeKey conflicts with previous runs in the database.
+  The duplicate-webhook test (test 2) reuses the same eventId from test 1
+  within the same run, so dedup logic is still verified.
 #>
 param(
   [string]$BaseUrl = "http://localhost:3000"
 )
+
+# --- Run-level unique prefix to avoid cross-run dedupeKey collisions ---
+$script:RunId = [datetime]::Now.ToString("yyyyMMddHHmmss") + "_" + [System.IO.Path]::GetRandomFileName().Substring(0, 6)
 
 # --- Counters ---
 $script:Passed = 0
@@ -100,11 +105,6 @@ function Send-Webhook {
   return Invoke-Api -Uri "$BaseUrl/api/payment-webhook" -Body $body -ClientIp $ClientIp
 }
 
-function Get-Payment {
-  param([string]$PaymentId, [string]$ClientIp = "")
-  return Invoke-Api -Uri "$BaseUrl/api/create-payment" -Method "GET" -ClientIp $ClientIp
-}
-
 # Assign virtual IPs to avoid rate limiter conflicts
 $Ips = @{
   health   = "20.0.0.0"
@@ -115,9 +115,21 @@ $Ips = @{
   test5    = "20.0.0.5"
 }
 
+# Build unique event IDs for this run using the run-level prefix
+$evtValid     = "${script:RunId}_valid"
+$evtAmount    = "${script:RunId}_amount"
+$evtSignature = "${script:RunId}_signature"
+$evtNotFound  = "${script:RunId}_notfound"
+
+$tradeValid     = "${script:RunId}_trade_valid"
+$tradeAmount    = "${script:RunId}_trade_amount"
+$tradeSignature = "${script:RunId}_trade_signature"
+$tradeNotFound  = "${script:RunId}_trade_notfound"
+
 # -- Health check --
 Write-Host "===== AI創業紅綠燈 Webhook Test =====" -ForegroundColor Magenta
-Write-Host "Target: $BaseUrl`n" -ForegroundColor DarkGray
+Write-Host "Target: $BaseUrl" -ForegroundColor DarkGray
+Write-Host "RunId : $script:RunId`n" -ForegroundColor DarkGray
 
 $health = New-Payment -ClientIp $Ips.health
 if ($health.StatusCode -eq 200) {
@@ -133,7 +145,7 @@ if ($health.StatusCode -eq 200) {
 # =============================================
 Header "1 - Valid webhook signature + amount -> processed true"
 $p1 = New-Payment -ClientIp $Ips.test1
-$r1 = Send-Webhook -PaymentId $p1.Content.payment.id -ProviderEventId "evt_001" -ProviderPaymentId "mock_trade_001" -ClientIp $Ips.test1
+$r1 = Send-Webhook -PaymentId $p1.Content.payment.id -ProviderEventId $evtValid -ProviderPaymentId $tradeValid -ClientIp $Ips.test1
 if ($r1.StatusCode -eq 200 -and $r1.Content.ok -eq $true -and $r1.Content.processed -eq $true) {
   Pass
 } elseif ($r1.StatusCode -eq 200 -and $r1.Content.ok -eq $true -and $r1.Content.reason -eq "payment_already_processed") {
@@ -144,10 +156,10 @@ if ($r1.StatusCode -eq 200 -and $r1.Content.ok -eq $true -and $r1.Content.proces
 }
 
 # =============================================
-# 2. Duplicate webhook → duplicated: true
+# 2. Duplicate webhook → duplicated: true (same eventId as test 1)
 # =============================================
 Header "2 - Duplicate webhook -> duplicated true"
-$r2 = Send-Webhook -PaymentId $p1.Content.payment.id -ProviderEventId "evt_001" -ProviderPaymentId "mock_trade_001" -ClientIp $Ips.test1
+$r2 = Send-Webhook -PaymentId $p1.Content.payment.id -ProviderEventId $evtValid -ProviderPaymentId $tradeValid -ClientIp $Ips.test1
 if ($r2.StatusCode -eq 200 -and $r2.Content.duplicated -eq $true) {
   Pass
 } else {
@@ -159,7 +171,7 @@ if ($r2.StatusCode -eq 200 -and $r2.Content.duplicated -eq $true) {
 # =============================================
 Header "3 - Amount mismatch -> reason amount_mismatch"
 $p3 = New-Payment -ClientIp $Ips.test3
-$r3 = Send-Webhook -PaymentId $p3.Content.payment.id -ProviderEventId "evt_003" -AmountTwd 999 -ClientIp $Ips.test3
+$r3 = Send-Webhook -PaymentId $p3.Content.payment.id -ProviderEventId $evtAmount -AmountTwd 999 -ClientIp $Ips.test3
 if ($r3.StatusCode -eq 200 -and $r3.Content.reason -eq "amount_mismatch") {
   Pass
 } else {
@@ -171,7 +183,7 @@ if ($r3.StatusCode -eq 200 -and $r3.Content.reason -eq "amount_mismatch") {
 # =============================================
 Header "4 - Invalid signature -> reason invalid_signature"
 $p4 = New-Payment -ClientIp $Ips.test4
-$r4 = Send-Webhook -PaymentId $p4.Content.payment.id -ProviderEventId "evt_004" -Signature "invalid" -ClientIp $Ips.test4
+$r4 = Send-Webhook -PaymentId $p4.Content.payment.id -ProviderEventId $evtSignature -Signature "invalid" -ClientIp $Ips.test4
 if ($r4.StatusCode -eq 200 -and $r4.Content.reason -eq "invalid_signature") {
   Pass
 } else {
@@ -182,7 +194,7 @@ if ($r4.StatusCode -eq 200 -and $r4.Content.reason -eq "invalid_signature") {
 # 5. Payment not found → reason: payment_not_found
 # =============================================
 Header "5 - Unknown paymentId -> reason payment_not_found"
-$r5 = Send-Webhook -PaymentId "pay_doesnotexist" -ProviderEventId "evt_005" -ClientIp $Ips.test5
+$r5 = Send-Webhook -PaymentId "pay_doesnotexist" -ProviderEventId $evtNotFound -ClientIp $Ips.test5
 if ($r5.StatusCode -eq 200 -and $r5.Content.reason -eq "payment_not_found") {
   Pass
 } else {

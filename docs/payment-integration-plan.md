@@ -98,7 +98,10 @@ ull | provider create-order 的原始回傳（JSON 字串），客服除錯與�
 
 ## 5. Analysis 狀態
 
-> **注意：** 型別中曾定義 ejected_invalid_idea / ejected_low_information / ejected_unsupported，但目前程式碼已使用統一的 
+> **注意：** 型別中曾定義 
+ejected_invalid_idea / 
+ejected_low_information / 
+ejected_unsupported，但目前程式碼已使用統一的 
 eeds_revision 處理所有內容驗證失敗情境，前述三個狀態已移除。
 
 | 狀態 | 說明 | 消耗 payment？ | 消耗 attempt？ |
@@ -396,6 +399,84 @@ npm run dev
 - 正式上線前必須通過真金流串接前的完整 checklist（見 §14）
 
 
+
+## 17. Confirm-Payment Guard — Phase 3G（2026-06-13）
+
+### 17.1 概述
+
+`/api/confirm-payment` 是 **mock-only endpoint**，僅在 development / test 環境可供 mock 付款確認使用。
+
+用途：
+
+- 讓前端在 mock 付款流程中，將 Payment.status 從 pending 改為 paid
+- 提供測試腳本驗證完整的 submit flow（create-payment → confirm-payment → submit-analysis）
+
+### 17.2 Production Guard
+
+```typescript
+if (process.env.NODE_ENV === "production") {
+  return new Response(null, { status: 404 });
+}
+```
+
+Production 行為：
+
+- 回傳 HTTP **404**，不回傳 JSON body，不洩漏 endpoint 結構
+- 不解析 payload
+- 不查詢 Payment
+- 不更新 Payment.status
+
+### 17.3 Provider Guard
+
+```typescript
+const paymentProvider = process.env.PAYMENT_PROVIDER;
+if (paymentProvider && paymentProvider !== "mock") {
+  return new Response(null, { status: 404 });
+}
+```
+
+當 PAYMENT_PROVIDER 環境變數為非 mock 值（如 `newebpay`、`ecpay`）時：
+
+- 回傳 HTTP **404**
+- 不更新 Payment.status
+- 確保真金流 provider 接入後，confirm-payment 無法被用來繞過付款
+
+### 17.4 Rate Limiting
+
+與 create-payment 共用相同的 rate limit helper（`checkRateLimit` / `getClientIp`）：
+
+- 10 req / 10 min per IP
+- 超過時回 429 + `Retry-After` header
+
+### 17.5 真金流時付款確認流程
+
+在真金流階段，payment confirmation 不應使用 confirm-payment endpoint，而應透過 webhook 驅動：
+
+1. 使用者在前端選擇金流方式並被導向金流頁面
+2. 使用者在金流頁面完成付款
+3. 金流 provider 發送 webhook 到 `/api/payment-webhook`
+4. Webhook 驗證簽章 → 更新 Payment.status 為 paid
+5. 前端可透過 polling 檢查 payment 狀態，或等待使用者手動重新整理
+
+### 17.6 Phase 3G 已完成項目
+
+- [x] `app/api/confirm-payment/route.ts` — 加入 production guard、provider guard、rate limiting
+- [x] `docs/payment-integration-plan.md` — 本文件更新
+- [x] `docs/launch-checklist.md` — 加入 confirm-payment guard 檢查項
+
+### 17.7 接真金流前必須完成的事項
+
+1. **移除 confirm-payment 的 production guard** — 僅當真金流 provider 的 webhook 流程已實作且可正確更新 Payment.status 時，才考慮讓 confirm-payment 在 production 運作
+2. **或者完全移除 confirm-payment** — 如果真金流階段不再需要前端直接呼叫 confirm-payment，則應直接刪除這個 endpoint
+3. **確保 payment-webhook 的 production guard 可安全移除** — 見 §16.7
+4. **驗證 webhook → payment status 更新的端到端流程** — 確保無需 confirm-payment 也能完成付款確認
+
+### 17.8 重要限制
+
+- **不要把目前 mock confirm endpoint 當作正式付款確認使用**
+- **不要移除 production guard**，除非真金流 provider 整合完成
+- **不要移除 provider guard**，真金流階段應由 webhook 驅動付款確認
+- 正式上線前必須通過真金流串接前的完整 checklist（見 §14）
 ---
 
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-12
