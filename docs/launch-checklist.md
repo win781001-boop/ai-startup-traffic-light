@@ -188,6 +188,9 @@
 - [ ] sandbox 測試通過：付款成功／失敗／重複通知／金額不符／訂單不存在
 - [ ] production 前 confirm-payment 仍為 404
 - [ ] mock webhook production guard 仍有效
+- [ ] NewebPay provider skeleton 不可在 production 被誤認為正式完成
+- [ ] verifyCallback 未完成前不可讓 newebpay notify 改 Payment.status
+- [ ] createPayment 未完成前不可開啟 PAYMENT_PROVIDER=newebpay production
 
 
 

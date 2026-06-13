@@ -746,7 +746,7 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 
 | 需要修改 | 所屬階段 | 說明 |
 |----------|----------|------|
-| 新增 `lib/payments/providers/newebpay.ts` | Phase 3K | NewebPay provider skeleton |
+| [x] 新增 `lib/payments/providers/newebpay.ts` | Phase 3K | NewebPay provider skeleton |
 | 實作 AES-256-CBC 加密 / SHA-256 helper | Phase 3L | AES 加密 TradeInfo + SHA-256 TradeSha |
 | `create-payment/route.ts` 依 PAYMENT_PROVIDER 選擇 provider | Phase 3M | 目前硬編碼 `getPaymentProvider("mock")` |
 | `payment-webhook/route.ts` 支援 application/x-www-form-urlencoded | Phase 3N | 目前只解析 JSON |
@@ -759,7 +759,7 @@ create-payment → 建立 Payment(status=pending) + Submission + Analysis
 
 | 階段 | 範圍 | 是否改程式碼 | 是否可上 production |
 |------|------|------------|-------------------|
-| **Phase 3K** | NewebPay provider skeleton，只建檔案結構，不發 API 呼叫 | 是 | 否 |
+| **[x] Phase 3K** | NewebPay provider skeleton，只建檔案結構，不發 API 呼叫 | 是 | 否 |
 | **Phase 3L** | 加密 / TradeInfo / TradeSha helper + 單元測試 | 是 | 否 |
 | **Phase 3M** | create-payment 接 NewebPay sandbox，回傳 formHtml | 是 | 否 |
 | **Phase 3N** | payment-webhook / notify verifyCallback + pending → paid | 是 | 否 |
