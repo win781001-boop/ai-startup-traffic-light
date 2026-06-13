@@ -191,6 +191,10 @@
 - [ ] NewebPay provider skeleton 不可在 production 被誤認為正式完成
 - [ ] verifyCallback 未完成前不可讓 newebpay notify 改 Payment.status
 - [ ] createPayment 未完成前不可開啟 PAYMENT_PROVIDER=newebpay production
+- [ ] NewebPay crypto helper encrypt/decrypt roundtrip 通過
+- [ ] TradeSha deterministic 測試通過
+- [ ] buildMpgFormFields 加密後 TradeInfo 不包含明文 MerchantOrderNo / MerchantID
+- [ ] HashKey / HashIV 不出現在 log 或 commit
 
 
 
