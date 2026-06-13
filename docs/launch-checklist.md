@@ -170,6 +170,26 @@
 - [ ] PaymentProvider 支援 formHtml / notifyUrl / returnUrl 等正式金流欄位
 - [ ] ErrorReport / refund / payment incident 流程已定義
 
+##### 藍新 NewebPay 專用檢查
+
+- [ ] PAYMENT_PROVIDER=newebpay 已設定
+- [ ] NEWEBPAY_MERCHANT_ID 已設定且正確
+- [ ] NEWEBPAY_HASH_KEY / NEWEBPAY_HASH_IV 已設定且未外洩
+- [ ] NEWEBPAY_MPG_URL 指向正確環境（測試或正式）
+- [ ] NotifyURL 可由藍新伺服器正確存取（非 localhost）
+- [ ] ReturnURL / ClientBackURL 不作為付款成功依據
+- [ ] TradeInfo / TradeSha 驗證通過才改 paid
+- [ ] Amt 與 Payment.amountTwd 完全一致才可改 paid
+- [ ] MerchantOrderNo 可正確對應內部 paymentId
+- [ ] TradeNo 有保存為 providerPaymentId
+- [ ] webhook / notify idempotency 測試通過
+- [ ] 重複 notify 不會重複處理（dedupeKey 正確）
+- [ ] failed / expired 狀態處理規則已確認
+- [ ] sandbox 測試通過：付款成功／失敗／重複通知／金額不符／訂單不存在
+- [ ] production 前 confirm-payment 仍為 404
+- [ ] mock webhook production guard 仍有效
+
+
 
 
 - [ ] 金流測試環境通過

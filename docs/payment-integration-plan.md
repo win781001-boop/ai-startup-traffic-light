@@ -596,6 +596,177 @@ if (paymentProvider && paymentProvider !== "mock") {
 - **Phase 3J** — provider-agnostic sandbox 研究（只讀），評估藍新 / ECPay / Line Pay 測試環境規格
 - **Phase 3K** — 真金流 provider sandbox 前置實作
 
+
+## 19. NewebPay 藍新 MPG 整合設計 — Phase 3J（2026-06-13）
+
+### 19.1 第一順位正式金流決策
+
+**選擇藍新 NewebPay 作為正式金流第一順位**，理由如下：
+
+| 因素 | 評估 |
+|------|------|
+| 小額一次性付款（49 元） | 藍新 MPG 支援信用卡、ATM、超商、LINE Pay 等多種方式，適合低金額 |
+| 手續費結構 | 藍新手續費為交易金額 2.x% 起 + 每筆固定費用，對小額尚可接受 |
+| 提領週期 | 藍新為 T+1 / T+3 撥款（依行業別），現金流周轉壓力低 |
+| 台灣常見度 | 藍新為台灣前三大金流服務，消費者信任度高 |
+| 技術可控性 | MPG 幕前支付為 form POST + AES-256-CBC 加密 + SHA-256 簽章，無需複雜 OAuth |
+| 開發文件 | 完整中文技術手冊（NDNF-1.2.2），PHP / Node.js 範例齊全 |
+| 測試環境 | 提供完整 sandbox，無需正式審核即可開發串接 |
+
+**不優先採用 LINE Pay / 綠界的原因：**
+
+- **LINE Pay**：需要額外 LINE Pay 商家申請、單一付款方式（僅 LINE Pay 錢包），不利轉換率
+- **綠界 ECPay**：技術規格與藍新類似，可作為備選，但藍新的串接手冊與開發者工具更完整
+
+### 19.2 預期付款流程
+
+```
+create-payment → 建立 Payment(status=pending) + Submission + Analysis
+       │
+       │  NewebPay provider 產生：
+       │    MerchantOrderNo = paymentId
+       │    TradeInfo = AES-256-CBC(參數JSON, HashKey, HashIV)
+       │    TradeSha = SHA-256(HashKey + TradeInfo + HashIV)
+       │
+       ▼  回傳 formHtml（含自動 submit 的 HTML form）
+前端自動 submit → NewebPay MPG 付款頁
+       │
+       │  使用者在藍新頁面選擇付款方式並完成付款
+       │
+       ├───────────────────────────────────────────┐
+       ▼                                            ▼
+  [NotifyURL callback]                         [ReturnURL redirect]
+   藍新 POST (server→server)                    瀏覽器導回前端
+   Status + 加密 TradeInfo                      前端顯示付款結果
+       │
+       ▼
+  驗證 TradeSha → 解密 TradeInfo
+  核對 MerchantOrderNo / Amt
+  更新 Payment.status = paid
+  paidAt = PayTime
+  providerPaymentId = TradeNo
+  寫入 PaymentWebhookLog
+       │
+       ▼
+  使用者回到前端 → 可 submit-analysis
+  submit-analysis 只消耗 paid 且 unused payment
+```
+
+**關鍵原則：NotifyURL 是唯一可信的付款成功來源。ReturnURL 僅供 UX。**
+
+### 19.3 藍新欄位與本站欄位對應表
+
+| 藍新欄位 | 本站欄位 | 說明 |
+|----------|----------|------|
+| `MerchantID` | `NEWEBPAY_MERCHANT_ID` env | 商店代號，不可硬編碼 |
+| `MerchantOrderNo` | `Payment.id`（paymentId） | create-payment 時以 paymentId 傳入 |
+| `Amt` | `Payment.amountTwd` | 必須完全一致，否則拒絕更新 |
+| `TradeNo` | `Payment.providerPaymentId` | 藍新交易序號，用於對帳、退款 |
+| `Status`（decrypted TradeInfo 內） | `Payment.status` | SUCCESS → paid；錯誤碼 → failed |
+| `PayTime` | `Payment.paidAt` | 藍新回傳的付款完成時間 |
+| `TradeInfo`（encrypted hex） | `PaymentWebhookLog.rawPayload` | 原始加密字串，用於事故追蹤 |
+| `TradeSha` | 驗證用，不儲存 | SHA-256 checksum |
+| `Email`（可選） | `CreatePaymentInput.customerEmail` | 用於藍新付款通知信 |
+| `ItemDesc` | `CreatePaymentInput.description` | 商品描述，顯示在藍新付款頁 |
+| `RespondType` | 固定 `JSON` | 藍新回傳格式 |
+| `Version` | `2.3` | API 版本（NDNF-1.2.2 最新版） |
+| `EncryptType` | `1` | 0=AES-CBC, 1=AES-GCM（目前選 CBC 以相容既有範例） |
+
+**Payment.status 狀態映射：**
+
+| 藍新 TradeStatus | 藍新 Notify 回傳 | 本站 status | 說明 |
+|------------------|-------------------|-------------|------|
+| `1`（付款成功） | Status=SUCCESS + PayTime 存在 | `paid` | 付款成功 |
+| `0`（未付款） | Status 非 SUCCESS | `pending` | 已建立但未付款 |
+| `2`（付款失敗） | Status=TRA-XXXXX | `failed` | 信用卡拒刷、餘額不足等 |
+| `3`（取消付款） | 不觸發 Notify | `expired` | 使用者取消或逾期 |
+| `6`（退款） | 客服手動操作 | `refunded` | 後續階段實作 |
+
+### 19.4 環境變數規劃
+
+以下變數未來需在 `.env.local` 與 Vercel Environment Variables 設定：
+
+| 環境變數 | 用途 | 範例值（測試） |
+|----------|------|----------------|
+| `PAYMENT_PROVIDER` | 切換金流 provider | `newebpay` |
+| `NEWEBPAY_MERCHANT_ID` | 藍新商店代號 | `MS127874575` |
+| `NEWEBPAY_HASH_KEY` | AES-256-CBC 加密金鑰（32 字元） | 測試用 `Fs5cX1TGqYM2PpdbE14a9H83YQSQF5jn` |
+| `NEWEBPAY_HASH_IV` | AES-256-CBC 加密 IV（16 字元） | 測試用 `C6AcmfqJILwgnhIP` |
+| `NEWEBPAY_MPG_URL` | MPG 閘道網址 | `https://ccore.newebpay.com/MPG/mpg_gateway` |
+| `APP_BASE_URL` | 本站根網址，用於組 NotifyURL / ReturnURL | `https://ai-startup-traffic-light.vercel.app` |
+
+可選（若由 APP_BASE_URL 組合則不獨立設）：
+
+| 環境變數 | 預設值 |
+|----------|--------|
+| `NEWEBPAY_NOTIFY_URL` | `${APP_BASE_URL}/api/payment-webhook` |
+| `NEWEBPAY_RETURN_URL` | `${APP_BASE_URL}/payment/result` |
+| `NEWEBPAY_CLIENT_BACK_URL` | `${APP_BASE_URL}/` |
+
+**安全性要求：**
+
+- `NEWEBPAY_HASH_KEY` 與 `NEWEBPAY_HASH_IV` **絕對不可寫入程式碼、不可 commit 到 Git、不可出現在前端 bundle**
+- `NEWEBPAY_MERCHANT_ID` 可出現在前端（form POST 需要），但仍建議透過 env 管理
+- 測試用 HashKey / HashIV 可寫入文件（如本節），但正式憑證嚴格保密
+- 所有 NewebPay envs 只存在於 `.env.local` / Vercel Environment Variables
+
+### 19.5 安全規則
+
+| 規則 | 說明 |
+|------|------|
+| **HashKey / HashIV 不可在前端出現** | 這是 AES 加密與簽章的憑證，外洩等於任何人都可偽造付款結果 |
+| **不可 commit 到 Git** | 所有憑證透過環境變數管理，`.env` 加入 `.gitignore` |
+| **NotifyURL 為唯一可信來源** | ReturnURL 與 ClientBackURL 經瀏覽器導回，可偽造 |
+| **必須驗證 TradeSha** | SHA-256 checksum 驗證後才解密 TradeInfo |
+| **必須解密 TradeInfo** | 不解密無法確認 MerchantOrderNo 與 Amt |
+| **必須核對 Amt** | 比對 TradeInfo 內的 Amt 與 Payment.amountTwd 一致 |
+| **必須核對 MerchantOrderNo** | 確保 TradeInfo 中的訂單編號對應到本站 paymentId |
+| **必須確認 Status 為付款成功** | 僅在 Status=SUCCESS + decrypted TradeInfo.Status=SUCCESS 時才改 paid |
+| **Idempotency** | 以 `newebpay:{TradeNo}` 作為 dedupeKey |
+| **NotURL 回 200** | 即使驗證失敗也回 HTTP 200，避免藍新重送 |
+| **ProviderPaymentId 保存** | TradeNo 必須寫入 Payment.providerPaymentId 以供查詢 |
+
+### 19.6 對目前架構的影響
+
+#### 已預備好的部分（不需要變動）
+
+| 項目 | 狀態 |
+|------|------|
+| `CreatePaymentInput.notifyUrl` | 已有（Phase 3I-B） |
+| `CreatePaymentInput.returnUrl` | 已有（Phase 3I-B） |
+| `CreatePaymentResult.formHtml` | 已有（Phase 3I-B），NewebPay 需回傳 form HTML |
+| `PaymentProvider.verifyCallback()` | 型別已定義 |
+| `PaymentWebhookLog` 結構 | 可儲存 TradeInfo rawPayload |
+| `Payment.providerPaymentId` | 可儲存 TradeNo |
+| `Payment.amountTwd` | 可核對 Amt |
+| `Payment.providerName` | 可設為 "newebpay" |
+| `confirm-payment` production guard | 真金流時應維持 404 |
+
+#### 需要修改的項目（後續階段）
+
+| 需要修改 | 所屬階段 | 說明 |
+|----------|----------|------|
+| 新增 `lib/payments/providers/newebpay.ts` | Phase 3K | NewebPay provider skeleton |
+| 實作 AES-256-CBC 加密 / SHA-256 helper | Phase 3L | AES 加密 TradeInfo + SHA-256 TradeSha |
+| `create-payment/route.ts` 依 PAYMENT_PROVIDER 選擇 provider | Phase 3M | 目前硬編碼 `getPaymentProvider("mock")` |
+| `payment-webhook/route.ts` 支援 application/x-www-form-urlencoded | Phase 3N | 目前只解析 JSON |
+| `payment-webhook/route.ts` 改為呼叫 provider.verifyCallback() | Phase 3N | 取代 inline mock 驗證 |
+| 新增付款導回頁或狀態頁 | Phase 3O | 接收 ReturnURL redirect |
+| 新增 `NEWEBPAY_NOTIFY_URL` 與 `NEWEBPAY_RETURN_URL` env 或由 APP_BASE_URL 組合 | Phase 3K | 組 URL |
+| `PaymentWebhookLog.dedupeKey` 策略調整為 `newebpay:{TradeNo}` | Phase 3N | 取代 mock 的 `providerName:providerEventId` |
+
+### 19.7 後續階段拆分
+
+| 階段 | 範圍 | 是否改程式碼 | 是否可上 production |
+|------|------|------------|-------------------|
+| **Phase 3K** | NewebPay provider skeleton，只建檔案結構，不發 API 呼叫 | 是 | 否 |
+| **Phase 3L** | 加密 / TradeInfo / TradeSha helper + 單元測試 | 是 | 否 |
+| **Phase 3M** | create-payment 接 NewebPay sandbox，回傳 formHtml | 是 | 否 |
+| **Phase 3N** | payment-webhook / notify verifyCallback + pending → paid | 是 | 否 |
+| **Phase 3O** | return page / payment status UX | 是 | 否 |
+| **Phase 3P** | sandbox end-to-end 測試（創單→付款→notify→submit 完整流程） | 是 | 否 |
+| **Phase 3Q** | production launch checklist + guard 驗證 + 文件最終確認 | 是 | ✅ 可上線 |
+
 ---
 
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-12
