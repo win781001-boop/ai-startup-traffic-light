@@ -195,6 +195,11 @@
 - [ ] TradeSha deterministic 測試通過
 - [ ] buildMpgFormFields 加密後 TradeInfo 不包含明文 MerchantOrderNo / MerchantID
 - [ ] HashKey / HashIV 不出現在 log 或 commit
+- [ ] NewebPay provider createPayment 測試通過（env 檢查、formHtml 安全、raw 安全）
+- [ ] formHtml 不包含 HashKey / HashIV
+- [ ] TradeInfo 不洩漏明文 MerchantOrderNo
+- [ ] verifyCallback 未完成前不可開 production
+- [ ] app/api/create-payment 尚未切換 PAYMENT_PROVIDER=newebpay
 
 
 
