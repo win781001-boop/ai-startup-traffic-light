@@ -937,6 +937,44 @@ Phase 3P-C 讓 PaymentPanel 在收到 create-payment 回應中的 formHtml 時�
 - Production 環境仍不可啟用 PAYMENT_PROVIDER=newebpay（需 Phase 3Q）
 - 不執行 prisma db push（不需要）
 - 不修改 API routes
+
+## Phase 3P-E — 金流註解與小安全整理（2026-06-13）
+
+### 概述
+
+Phase 3P-E 不修改付款流程或 API route，只補安全註解與小防呆：
+
+1. **app/payment/result/page.tsx** — polling useEffect 前補安全註解，說明 ReturnURL 不可信、本頁不更新付款狀態、付款成功只以 webhook 更新後的 /api/payment-status 結果為準
+2. **components/startup-light/PaymentPanel.tsx** — formHtml prop 補安全註解（來源限制、dangerouslySetInnerHTML 理由、script 不執行需手動 submit）
+3. **components/startup-light/PaymentPanel.tsx** — useEffect 找不到 form 時補 console.warn，避免靜默失敗
+4. **docs/payment-integration-plan.md** — 本文件更新
+5. **docs/launch-checklist.md** — 補註解 / safety note 檢查項
+
+### 安全註解重點
+
+| 檔案 | 註解內容 |
+|------|----------|
+| payment/result/page.tsx | ReturnURL 不可信、payment-status 唯讀、webhook 為唯一付款確認來源 |
+| PaymentPanel.tsx interface | formHtml 只應來自 /api/create-payment、dangerouslySetInnerHTML 僅為 submit form 至 MPG、React 不執行 script |
+| PaymentPanel.tsx hidden div | formHtml 來源為 server API、內容為靜態 hidden fields、React 已 strip script |
+| PaymentPanel.tsx useEffect | 說明手動 submit 原因、hasSubmittedRef 防重複 |
+
+### 防呆變更
+
+- useEffect 中找不到 form 時執行 console.warn("[PaymentPanel] formHtml injected but no <form> found in container")
+
+### Phase 3P-E 不做的事
+
+- 不抽 helper
+- 不改 getBaseUrl
+- 不改 provider 分支
+- 不改付款狀態判定
+- 不改 webhook
+- 不改 submit-analysis
+- 不改 UI 文案
+- 不改 API routes
+
+
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
 
 
@@ -1115,6 +1153,44 @@ Phase 3P-C 讓 PaymentPanel 在收到 create-payment 回應中的 formHtml 時�
 - Production 環境仍不可啟用 PAYMENT_PROVIDER=newebpay（需 Phase 3Q）
 - 不執行 prisma db push（不需要）
 - 不修改 API routes
+
+## Phase 3P-E — 金流註解與小安全整理（2026-06-13）
+
+### 概述
+
+Phase 3P-E 不修改付款流程或 API route，只補安全註解與小防呆：
+
+1. **app/payment/result/page.tsx** — polling useEffect 前補安全註解，說明 ReturnURL 不可信、本頁不更新付款狀態、付款成功只以 webhook 更新後的 /api/payment-status 結果為準
+2. **components/startup-light/PaymentPanel.tsx** — formHtml prop 補安全註解（來源限制、dangerouslySetInnerHTML 理由、script 不執行需手動 submit）
+3. **components/startup-light/PaymentPanel.tsx** — useEffect 找不到 form 時補 console.warn，避免靜默失敗
+4. **docs/payment-integration-plan.md** — 本文件更新
+5. **docs/launch-checklist.md** — 補註解 / safety note 檢查項
+
+### 安全註解重點
+
+| 檔案 | 註解內容 |
+|------|----------|
+| payment/result/page.tsx | ReturnURL 不可信、payment-status 唯讀、webhook 為唯一付款確認來源 |
+| PaymentPanel.tsx interface | formHtml 只應來自 /api/create-payment、dangerouslySetInnerHTML 僅為 submit form 至 MPG、React 不執行 script |
+| PaymentPanel.tsx hidden div | formHtml 來源為 server API、內容為靜態 hidden fields、React 已 strip script |
+| PaymentPanel.tsx useEffect | 說明手動 submit 原因、hasSubmittedRef 防重複 |
+
+### 防呆變更
+
+- useEffect 中找不到 form 時執行 console.warn("[PaymentPanel] formHtml injected but no <form> found in container")
+
+### Phase 3P-E 不做的事
+
+- 不抽 helper
+- 不改 getBaseUrl
+- 不改 provider 分支
+- 不改付款狀態判定
+- 不改 webhook
+- 不改 submit-analysis
+- 不改 UI 文案
+- 不改 API routes
+
+
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
 
 
@@ -1257,6 +1333,44 @@ Phase 3P-C 讓 PaymentPanel 在收到 create-payment 回應中的 formHtml 時�
 - Production 環境仍不可啟用 PAYMENT_PROVIDER=newebpay（需 Phase 3Q）
 - 不執行 prisma db push（不需要）
 - 不修改 API routes
+
+## Phase 3P-E — 金流註解與小安全整理（2026-06-13）
+
+### 概述
+
+Phase 3P-E 不修改付款流程或 API route，只補安全註解與小防呆：
+
+1. **app/payment/result/page.tsx** — polling useEffect 前補安全註解，說明 ReturnURL 不可信、本頁不更新付款狀態、付款成功只以 webhook 更新後的 /api/payment-status 結果為準
+2. **components/startup-light/PaymentPanel.tsx** — formHtml prop 補安全註解（來源限制、dangerouslySetInnerHTML 理由、script 不執行需手動 submit）
+3. **components/startup-light/PaymentPanel.tsx** — useEffect 找不到 form 時補 console.warn，避免靜默失敗
+4. **docs/payment-integration-plan.md** — 本文件更新
+5. **docs/launch-checklist.md** — 補註解 / safety note 檢查項
+
+### 安全註解重點
+
+| 檔案 | 註解內容 |
+|------|----------|
+| payment/result/page.tsx | ReturnURL 不可信、payment-status 唯讀、webhook 為唯一付款確認來源 |
+| PaymentPanel.tsx interface | formHtml 只應來自 /api/create-payment、dangerouslySetInnerHTML 僅為 submit form 至 MPG、React 不執行 script |
+| PaymentPanel.tsx hidden div | formHtml 來源為 server API、內容為靜態 hidden fields、React 已 strip script |
+| PaymentPanel.tsx useEffect | 說明手動 submit 原因、hasSubmittedRef 防重複 |
+
+### 防呆變更
+
+- useEffect 中找不到 form 時執行 console.warn("[PaymentPanel] formHtml injected but no <form> found in container")
+
+### Phase 3P-E 不做的事
+
+- 不抽 helper
+- 不改 getBaseUrl
+- 不改 provider 分支
+- 不改付款狀態判定
+- 不改 webhook
+- 不改 submit-analysis
+- 不改 UI 文案
+- 不改 API routes
+
+
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-13
 
 

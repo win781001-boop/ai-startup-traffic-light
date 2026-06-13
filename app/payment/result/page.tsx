@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -37,6 +37,19 @@ export default function PaymentResultPage() {
     }
   }, []);
 
+  /**
+   * Poll payment status via /api/payment-status (read-only).
+   *
+   * Safety notes:
+   * - ReturnURL is a browser redirect from NewebPay. It CANNOT be trusted
+   *   as payment confirmation — the URL can be forged or visited by anyone
+   *   who knows the paymentId.
+   * - This page does NOT update Payment.status. It only reads from the API.
+   * - The ONLY trusted payment confirmation source is the NewebPay NotifyURL
+   *   webhook (/api/payment-webhook), which updates Payment.status to paid.
+   * - This polling loop waits for the webhook to process before showing
+   *   the success state.
+   */
   // Poll payment status
   useEffect(() => {
     if (!paymentId) return;

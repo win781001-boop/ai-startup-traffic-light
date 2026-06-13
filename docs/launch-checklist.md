@@ -266,6 +266,15 @@
 
 
 
+
+##### Phase 3P-E 安全註解與防呆
+
+- [ ] payment/result/page.tsx 有 ReturnURL 不可信 / payment-status 唯讀 / webhook 為唯一來源 的註解
+- [ ] PaymentPanel.tsx formHtml prop 有來源限制與 dangerouslySetInnerHTML 理由的註解
+- [ ] PaymentPanel.tsx useEffect 找不到 form 時有 console.warn（不靜默失敗）
+- [ ] PaymentPanel.tsx hidden container 有安全設計的註解
+- [ ] docs/payment-integration-plan.md 有 Phase 3P-E 紀錄
+- [ ] docs/launch-checklist.md 有本節檢查項
 - [ ] 金流測試環境通過
 - [ ] 金流正式環境通過
 
