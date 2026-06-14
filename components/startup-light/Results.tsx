@@ -138,14 +138,24 @@ export function DownloadReportButton({ analysisResult, analysisData, answers }: 
     document.body.removeChild(el); URL.revokeObjectURL(u);
   };
 
+  const isBeta = typeof process !== "undefined" && process.env.NEXT_PUBLIC_PUBLIC_BETA === "true";
+
   return (
-    <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
-      <p className="mb-4 text-sm text-text-secondary/60 text-center">將此判定儲存為獨立的 HTML 報告檔案。</p>
-      <button onClick={handleDownload} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90">
-        下載本次判定
-      </button>
-      <p className="mt-2 text-xs text-center text-text-secondary/50">請自行保存本檔案。本工具目前不提供永久結果保存。</p>
-    </div>
+    <>
+      {isBeta ? (
+        <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+          <p className="text-sm text-text-secondary/60 text-center leading-relaxed">免費公測期間可查看本次判定結果；完整報告下載將於正式版提供。</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border-subtle bg-bg-card/60 p-5 backdrop-blur-sm">
+          <p className="mb-4 text-sm text-text-secondary/60 text-center">將此判定儲存為獨立的 HTML 報告檔案。</p>
+          <button onClick={handleDownload} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90">
+            下載本次判定
+          </button>
+          <p className="mt-2 text-xs text-center text-text-secondary/50">請自行保存本檔案。本工具目前不提供永久結果保存。</p>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -205,7 +215,6 @@ export function RevisionNotice({ remainingAttempts, onReset }: RevisionNoticePro
     </div>
   );
 }
-
 
 // ─── ErrorReportSection ───
 
@@ -376,7 +385,6 @@ function getCheckSummary(light: string, demandLevel: string | undefined, concern
   };
 }
 
-
 // ─── AnalysisSuccess (full success result) ───
 
 interface AnalysisSuccessProps {
@@ -483,8 +491,4 @@ export function AnalysisSuccess({ analysisData, analysisResult, answers, feedbac
     </section>
   );
 }
-
-
-
-
 
