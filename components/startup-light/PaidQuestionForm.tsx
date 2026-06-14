@@ -20,12 +20,12 @@ interface PaidQuestionFormProps {
 }
 
 const FIELDS = [
-  { key: "idea", label: "你的點子是什麼？", hint: "簡短描述你的創業或副業點子" },
-  { key: "targetUser", label: "目標使用者是誰？", hint: "描述你的目標族群" },
-  { key: "problem", label: "它解決什麼問題？", hint: "描述這個點子想解決的核心問題" },
-  { key: "pricing", label: "你想怎麼收費？", hint: "描述收費方式或商業模式" },
-  { key: "firstVersion", label: "第一版你打算怎麼做？", hint: "描述第一版的範圍" },
-  { key: "buildTime", label: "你預估多久能完成？", hint: "預估開發時間" },
+  { key: "idea", label: "你想做的線上工具、系統或服務是什麼？", hint: "請用白話說明它是網站、表單、報告、查詢工具、媒合服務，或其他線上服務。" },
+  { key: "targetUser", label: "最可能會使用或付費的人是誰？", hint: "請描述一群具體的人，不要只寫「大家」或「上班族」。" },
+  { key: "problem", label: "這些人現在遇到什麼麻煩，才會需要這個工具或服務？", hint: "請寫出他們現在的不方便、痛點、浪費時間、判斷困難或花錢風險。" },
+  { key: "pricing", label: "你打算怎麼收費？大約收多少錢？", hint: "請寫出可能的收費方式和金額，例如單次 49 元、月費 199 元、抽成 10%，或先免費測試再收費。" },
+  { key: "firstVersion", label: "你打算先做出哪些功能，就拿去給人測試？", hint: "請說明第一版會提供哪些功能，哪些功能先不做，避免一開始做太大。" },
+  { key: "buildTime", label: "你預計多久能做出可測試版本？打算先找誰試用？", hint: "請估計時間，並說明你會先找朋友、社群、客戶或特定族群測試。" },
 ];
 
 export function PaidQuestionForm({ form, onChange, onSubmit, fullLoading, expandedExamples, onToggleExample }: PaidQuestionFormProps) {
@@ -47,7 +47,8 @@ export function PaidQuestionForm({ form, onChange, onSubmit, fullLoading, expand
   return (
     <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
       <h2 className="mb-2 text-lg font-semibold text-white">完整判定</h2>
-      <p className="mb-6 text-sm text-text-secondary">已帶入前 3 題，請再補充 3 題，取得紅黃綠檢查結果。</p>
+      <p className="mb-2 text-sm text-text-secondary">已帶入前 3 題，請再補充 3 題，依需求強弱與執行疑慮給出紅黃綠檢查結果。</p>
+      <p className="mb-6 text-xs text-yellow-light/70 bg-yellow-light/[0.04] rounded-lg px-4 py-2.5 leading-relaxed">這份檢查表是為「線上工具、系統或數位服務」設計的，不適合實體開店、純批貨或一般商品買賣。</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         {FIELDS.map(({ key, label, hint }) => {
           const val = (form as Record<string, string>)[key];

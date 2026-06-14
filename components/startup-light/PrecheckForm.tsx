@@ -31,13 +31,14 @@ export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expa
   return (
     <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
       <h2 className="mb-2 text-lg font-semibold text-white">{isBeta ? "先填 3 題，確認要檢查的點子" : "先填 3 題，確認要判定的點子"}</h2>
-      <p className="mb-6 text-sm text-text-secondary">{isBeta ? "先用 3 題整理你的點子。通過後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。" : "先用 3 題整理你的 AI 點子。付款後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。"}</p>
+      <p className="mb-2 text-sm text-text-secondary">{isBeta ? "先用 3 題整理你的線上工具點子。通過後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。" : "先用 3 題整理你的 AI 點子。付款後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。"}</p>
+      <p className="mb-6 text-xs text-yellow-light/70 bg-yellow-light/[0.04] rounded-lg px-4 py-2.5 leading-relaxed">這份檢查表是為「線上工具、系統或數位服務」設計的，不適合實體開店、純批貨或一般商品買賣。</p>
 
       {(["idea", "targetUser", "problem"] as const).map((key) => {
         const labels: Record<string, { label: string; hint: string; placeholder: string }> = {
-          idea: { label: "你的點子是什麼？", hint: "簡短描述你的創業或副業點子", placeholder: "" },
-          targetUser: { label: "目標使用者是誰？", hint: "描述你的目標族群", placeholder: "" },
-          problem: { label: "它解決什麼問題？", hint: "描述這個點子想解決的核心問題", placeholder: "" },
+          idea: { label: "你想做的線上工具、系統或服務是什麼？", hint: "請用白話說明它是網站、表單、報告、查詢工具、媒合服務，或其他線上服務。", placeholder: "" },
+          targetUser: { label: "最可能會使用或付費的人是誰？", hint: "請描述一群具體的人，不要只寫「大家」或「上班族」。", placeholder: "" },
+          problem: { label: "這些人現在遇到什麼麻煩，才會需要這個工具或服務？", hint: "請寫出他們現在的不方便、痛點、浪費時間、判斷困難或花錢風險。", placeholder: "" },
         };
         const { label, hint, placeholder } = labels[key];
         const val = fields[key];
