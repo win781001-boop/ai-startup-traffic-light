@@ -35,9 +35,9 @@ export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expa
 
       {(["idea", "targetUser", "problem"] as const).map((key) => {
         const labels: Record<string, { label: string; hint: string; placeholder: string }> = {
-          idea: { label: "你的點子是什麼？", hint: "簡短描述你的創業或副業點子", placeholder: "例如：AI 食譜產生器" },
-          targetUser: { label: "目標使用者是誰？", hint: "描述你的目標族群", placeholder: "例如：每天煮飯的家庭主婦" },
-          problem: { label: "它解決什麼問題？", hint: "描述這個點子想解決的核心問題", placeholder: "例如：不知道每天要煮什麼" },
+          idea: { label: "你的點子是什麼？", hint: "簡短描述你的創業或副業點子", placeholder: "" },
+          targetUser: { label: "目標使用者是誰？", hint: "描述你的目標族群", placeholder: "" },
+          problem: { label: "它解決什麼問題？", hint: "描述這個點子想解決的核心問題", placeholder: "" },
         };
         const { label, hint, placeholder } = labels[key];
         const val = fields[key];
