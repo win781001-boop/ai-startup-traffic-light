@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
 import type { SubmitAnalysisResponse } from "@/app/api/submit-analysis/route";
 function isValidAnalysisResult(data: unknown): data is AnalysisResult {
@@ -67,6 +67,7 @@ export default function Home() {
 
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
+  const resultSectionRef = useRef<HTMLDivElement>(null);
   // URL handoff state (from /payment/result or ReturnURL)
   const [urlHandoffStatus, setUrlHandoffStatus] = useState<"none" | "loading" | "paid" | "pending" | "not_found" | "error">("none");
   const [urlPaymentId, setUrlPaymentId] = useState<string | null>(null);
@@ -122,6 +123,15 @@ export default function Home() {
     })();
   }, []);
 
+
+  // ─── Scroll to result when analysis completes ───
+  useEffect(() => {
+    if (analysisData?.hasSignal && analysisResult) {
+      requestAnimationFrame(() => {
+        resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [analysisData, analysisResult]);
   function updateRiskField(key: string, value: string) {
     setRiskForm((prev) => ({ ...prev, [key]: value }));
     setBoundaryError(null);
@@ -438,6 +448,8 @@ export default function Home() {
           </section>
         )}
 
+       
+        <div ref={resultSectionRef}>
         {/* Result: Success */}
         {analysisData && analysisData.hasSignal && analysisResult && (
           <AnalysisSuccess
@@ -448,6 +460,7 @@ export default function Home() {
             onFeedback={handleFeedback}
           />
         )}
+        </div>
 
         {/* Demo Cases */}
         {!analysisData && (
