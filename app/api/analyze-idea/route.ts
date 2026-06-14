@@ -1,4 +1,5 @@
-﻿import { searchMarketContext, formatSearchContext } from "@/lib/search-support";
+﻿import { verifyInternalRequest } from "@/lib/internal-auth";
+import { searchMarketContext, formatSearchContext } from "@/lib/search-support";
 import { isIdeaRelevant, isIllegalIdea, hasLowInformation } from "@/lib/idea-validation";
 export interface IdeaInput {
   idea: string;
@@ -158,6 +159,12 @@ function sanitizeResult(raw: Record<string, unknown>): AnalysisResult {
 }
 
 export async function POST(request: Request) {
+  // --- Internal-only guard ---
+  // Prevents external callers from consuming AI API cost directly.
+  if (!verifyInternalRequest(request)) {
+    return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+
   try {
     const body: IdeaInput = await request.json();
     const apiKey = process.env.OPENAI_API_KEY;

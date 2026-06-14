@@ -313,9 +313,18 @@
 
 ---
 
+
+---
+
+## 15. Production Blocking Gates
+
+> 以下為強制攔截條件。任一項未通過，不可公開正式對外流量或收款。
+
+- [ ] Sandbox E2E 未跑通，不可啟用 PAYMENT_PROVIDER=newebpay（需包含 create-payment → MPG 付款 → NotifyURL callback → paid 確認）
+- [ ] Production 小額實刷未通過，不可公開正式收款（需實際刷 49 元並確認完整流程）
+- [ ] AI cost abuse guard 未完成前，不可開放公開流量（含 analyze-idea internal guard、risk-scan rate limit）
+- [ ] Serverless-compatible rate limit 未完成前，不可把現有 memory rate limit 視為 production 級防線
+
+---
+
 **檢查人員簽名：** ____________________ **日期：** ____________________
-
-
-
-
-

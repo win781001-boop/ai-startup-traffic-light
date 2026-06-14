@@ -1467,3 +1467,28 @@ PAYMENT_PROVIDER 未設定 或 = "mock"
 - [x] `scripts/test-create-payment-newebpay.ps1` — 測試執行腳本
 - [x] `docs/payment-integration-plan.md` — 本文件更新
 - [x] `docs/launch-checklist.md` — 補上 create-payment provider switch 檢查項
+
+
+## Phase 3T-A — AI Cost Abuse Guard + 文件更新（2026-06-14）
+
+### NewebPay Sandbox E2E 狀態
+
+NewebPay sandbox E2E 目前 **blocked by external dependency**：
+
+- 原因：藍新會員 / 商店後台需身分證上傳與人工認證，尚未完成
+- 影響：無法執行 sandbox 真實付款測試（create-payment → MPG 付款 → NotifyURL callback → 確認 paid）
+- 當前狀態：等待藍新人工認證完成後續跑 sandbox E2E
+- 不退路：create-payment route 已有 PAYMENT_PROVIDER=newebpay 分支（附 production guard），
+  sandbox E2E 通過前不可啟用 production PAYMENT_PROVIDER=newebpay
+
+### Phase 3T-A 已完成項目
+
+- [x] lib/internal-auth.ts — 新增 internal request 驗證輔助模組
+- [x] pp/api/analyze-idea/route.ts — 新增 internal-only guard（無 header 回 403）
+- [x] pp/api/submit-analysis/route.ts — 傳送 x-internal-secret header 至 analyze-idea
+- [x] pp/api/risk-scan/route.ts — 新增 rate limit（30 req / 10 min）
+- [x] docs/payment-integration-plan.md — 本文件更新（含 NewebPay blocked 狀態）
+- [x] docs/launch-checklist.md — 新增 production blocking gates
+
+---
+**文件維護者：** ____________________ **最後更新日期：** 2026-06-14

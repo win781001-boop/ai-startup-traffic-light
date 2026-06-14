@@ -1,4 +1,6 @@
-﻿export interface RiskScanInput {
+﻿import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+
+export interface RiskScanInput {
   idea: string;
   targetUser: string;
   problem: string;
@@ -39,6 +41,15 @@ function buildPrompt(input: RiskScanInput): string {
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const limit = checkRateLimit(ip, 30, 10 * 60 * 1000);
+    if (!limit.allowed) {
+      return Response.json(
+        { error: "rate_limited", message: "請稍後再試。" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+      );
+    }
+
     const body: RiskScanInput = await request.json();
     const apiKey = process.env.OPENAI_API_KEY;
     const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
