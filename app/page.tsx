@@ -66,6 +66,9 @@ export default function Home() {
   const [urlAnalysisId, setUrlAnalysisId] = useState<string | null>(null);
 
   function toggleExample(key: string) {
+    setExpandedExamples((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   // On mount, check for paymentId / analysisId from URL query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -111,8 +114,6 @@ export default function Home() {
       }
     })();
   }, []);
-    setExpandedExamples((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
 
   function updateRiskField(key: string, value: string) {
     setRiskForm((prev) => ({ ...prev, [key]: value }));

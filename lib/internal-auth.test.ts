@@ -4,62 +4,62 @@ import { verifyInternalRequest } from "./internal-auth";
 let passed = 0, failed = 0;
 const a = (c, m) => { if (c) { passed++; console.log("  PASS:", m); } else { failed++; console.log("  FAIL:", m); } };
 
-function makeReq(host, xForwardedHost, internalSecret) {
-  const headers = { host };
-  if (xForwardedHost !== undefined) headers["x-forwarded-host"] = xForwardedHost;
+function makeReq(internalSecret) {
+  const headers = {};
   if (internalSecret !== undefined) headers["x-internal-secret"] = internalSecret;
-  return new Request("http://" + host + "/api/analyze-idea", { headers });
+  return new Request("http://localhost:3000/api/analyze-idea", { headers });
 }
 
 (async () => {
   const origNodeEnv = process.env.NODE_ENV;
   const origSecret = process.env.INTERNAL_API_SECRET;
+  const origBypass = process.env.ALLOW_INTERNAL_API_BYPASS;
 
-  // --- a. production, no secret ---
-  console.log("--- a. production, no INTERNAL_API_SECRET ---");
+  // --- 1. production, no secret ---
+  console.log("--- 1. production, no INTERNAL_API_SECRET ---");
   process.env.NODE_ENV = "production";
   delete process.env.INTERNAL_API_SECRET;
-  a(verifyInternalRequest(makeReq("localhost:3000")) === false, "production + no secret + localhost => reject");
-  a(verifyInternalRequest(makeReq("ngrok.io")) === false, "production + no secret + ngrok => reject");
+  delete process.env.ALLOW_INTERNAL_API_BYPASS;
+  a(verifyInternalRequest(makeReq()) === false, "production + no secret => reject");
+  process.env.ALLOW_INTERNAL_API_BYPASS = "true";
+  a(verifyInternalRequest(makeReq()) === false, "production + no secret + bypass=true => reject (bypass ignored in prod)");
 
-  // --- b. production, with secret ---
-  console.log("--- b. production, INTERNAL_API_SECRET set ---");
+  // --- 2. production, with secret ---
+  console.log("--- 2. production, INTERNAL_API_SECRET set ---");
+  delete process.env.ALLOW_INTERNAL_API_BYPASS;
   process.env.INTERNAL_API_SECRET = "s3cret";
-  a(verifyInternalRequest(makeReq("localhost:3000")) === false, "production + secret + no header => reject");
-  a(verifyInternalRequest(makeReq("localhost:3000", undefined, "wrong")) === false, "production + secret + wrong header => reject");
-  a(verifyInternalRequest(makeReq("localhost:3000", undefined, "s3cret")) === true, "production + secret + correct header => allow");
+  a(verifyInternalRequest(makeReq()) === false, "production + secret + no header => reject");
+  a(verifyInternalRequest(makeReq("wrong")) === false, "production + secret + wrong header => reject");
+  a(verifyInternalRequest(makeReq("s3cret")) === true, "production + secret + correct header => allow");
 
-  // --- c. dev, no secret, localhost ---
-  console.log("--- c. development, no secret, localhost ---");
+  // --- 3. development, no secret, no bypass ---
+  console.log("--- 3. development, no secret, no bypass ---");
   process.env.NODE_ENV = "development";
   delete process.env.INTERNAL_API_SECRET;
-  a(verifyInternalRequest(makeReq("localhost:3000")) === true, "dev + no secret + localhost:3000 => allow");
-  a(verifyInternalRequest(makeReq("127.0.0.1:3000")) === true, "dev + no secret + 127.0.0.1:3000 => allow");
-  a(verifyInternalRequest(makeReq("[::1]:3000")) === true, "dev + no secret + [::1]:3000 => allow");
-  a(verifyInternalRequest(makeReq("localhost")) === true, "dev + no secret + localhost (no port) => allow");
+  delete process.env.ALLOW_INTERNAL_API_BYPASS;
+  a(verifyInternalRequest(makeReq()) === false, "dev + no secret + no bypass => reject (fail-close)");
+  process.env.ALLOW_INTERNAL_API_BYPASS = "false";
+  a(verifyInternalRequest(makeReq()) === false, "dev + no secret + bypass=false => reject");
 
-  // --- d. dev, no secret, non-localhost ---
-  console.log("--- d. development, no secret, non-localhost ---");
-  a(verifyInternalRequest(makeReq("abc.ngrok-free.app")) === false, "dev + no secret + ngrok host => reject");
-  a(verifyInternalRequest(makeReq("abc.loca.lt")) === false, "dev + no secret + localtunnel host => reject");
-  a(verifyInternalRequest(makeReq("project.vercel.app")) === false, "dev + no secret + vercel preview => reject");
+  // --- 4. development, no secret, bypass=true ---
+  console.log("--- 4. development, no secret, bypass=true ---");
+  process.env.ALLOW_INTERNAL_API_BYPASS = "true";
+  a(verifyInternalRequest(makeReq()) === true, "dev + no secret + bypass=true => allow");
 
-  // --- e. dev, no secret, mixed host headers ---
-  console.log("--- e. development, mixed host/x-forwarded-host ---");
-  a(verifyInternalRequest(makeReq("localhost:3000", "abc.ngrok-free.app")) === false, "dev + no secret + host=local + x-fwd-host=ngrok => reject");
-  a(verifyInternalRequest(makeReq("abc.ngrok-free.app", "localhost:3000")) === false, "dev + no secret + host=ngrok + x-fwd-host=local => reject (both must be local)");
-
-  // --- f. dev, with secret ---
-  console.log("--- f. development, INTERNAL_API_SECRET set ---");
+  // --- 5. development, with secret ---
+  console.log("--- 5. development, INTERNAL_API_SECRET set ---");
+  delete process.env.ALLOW_INTERNAL_API_BYPASS;
   process.env.INTERNAL_API_SECRET = "s3cret";
-  a(verifyInternalRequest(makeReq("localhost:3000")) === false, "dev + secret + no header => reject (requires header)");
-  a(verifyInternalRequest(makeReq("localhost:3000", undefined, "s3cret")) === true, "dev + secret + correct header => allow");
-  a(verifyInternalRequest(makeReq("abc.ngrok-free.app", undefined, "s3cret")) === true, "dev + secret + correct header + ngrok => allow (auth wins over host)");
+  a(verifyInternalRequest(makeReq()) === false, "dev + secret + no header => reject");
+  a(verifyInternalRequest(makeReq("wrong")) === false, "dev + secret + wrong header => reject");
+  a(verifyInternalRequest(makeReq("s3cret")) === true, "dev + secret + correct header => allow");
 
   // --- Restore env ---
   process.env.NODE_ENV = origNodeEnv;
   if (origSecret !== undefined) process.env.INTERNAL_API_SECRET = origSecret;
   else delete process.env.INTERNAL_API_SECRET;
+  if (origBypass !== undefined) process.env.ALLOW_INTERNAL_API_BYPASS = origBypass;
+  else delete process.env.ALLOW_INTERNAL_API_BYPASS;
 
   console.log("");
   console.log("Results: " + passed + " passed, " + failed + " failed");
