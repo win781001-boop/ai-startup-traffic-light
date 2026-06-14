@@ -6,6 +6,51 @@
 
 ---
 
+
+## 0. 測試指令索引 / Test Command Index
+
+> 本節為 v0.14 新增，對應 phase 3X-B / 3X-C 整理的 npm scripts 分層。
+> 實際指令以 package.json scripts 為準。
+
+### 0a. 上線前最小必跑
+
+每次 deployment 前至少執行：
+
+- `npm run build`
+- `npm run test:unit` — 190 assertions，純邏輯無需 dev server
+
+### 0b. 本機 mock / DB 類整合測試 (需手動啟動 dev server)
+
+先在本機啟動 dev server（`npm run dev`），確認 .env.local 中有 DATABASE_URL 且 DB 可連線，
+再執行以下任一：
+
+- `npm run test:submit-flow` — 測完整 API 提交流程 (含 state transition、rate limit、邊界)
+- `npm run test:payment-webhook` — 測 mock webhook dedup / signature / amount
+- `npm run test:payment-status` — 測 payment-status 唯讀 API
+
+### 0c. NewebPay 本機整合測試 (腳本自動管理 dev server)
+
+以下腳本會自動 kill 現有 node 行程、以 PAYMENT_PROVIDER=newebpay + 測試 Key 啟動 dev server、執行測試、最後清理。**執行時勿手動啟動 dev server**：
+
+- `npm run test:newebpay:webhook` — 測 NotifyURL webhook route (form-urlencoded callback)
+- `npm run test:create-payment:newebpay` — 先試 mock，失敗則以 newebpay 模式重試
+- `npm run test:payment-panel:newebpay` — 依序測 mock 與 newebpay 兩種模式
+
+### 0d. 注意事項
+
+- **不存在 `npm run test:integration:local`**。不要把所有 integration tests 硬串在一起，因為部分腳本會自動 kill/start dev server（0c），與需手動啟動 dev server 的腳本（0b）有 server 生命週期衝突，無法安全串接。
+- **真實 NewebPay sandbox E2E** 仍需等藍新人工認證後手動執行（含 create-payment → MPG 付款頁 → NotifyURL callback → paid 確認），不在 npm scripts 中。
+
+### 0e. Production 前建議驗證順序
+
+1. `npm run build`
+2. `npm run test:unit`
+3. 跑本機 mock integration（0b）
+4. 跑 NewebPay 本機 integration（0c）
+5. 等藍新認證後跑 sandbox E2E
+6. production 小額實刷 49 元
+7. final payment / security review
+
 ## 1. 基本環境檢查
 
 - [ ] `git status` clean
