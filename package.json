@@ -12,7 +12,13 @@
     "test:newebpay:crypto": "node scripts/newebpay-crypto-test.mjs",
     "test:newebpay:provider": "node scripts/newebpay-provider-test.mjs",
     "test:newebpay:verify-callback": "node scripts/newebpay-verify-callback-test.mjs",
-    "test:unit": "npx tsx lib/rate-limit.test.ts && node scripts/newebpay-crypto-test.mjs && node scripts/newebpay-provider-test.mjs && node scripts/newebpay-verify-callback-test.mjs"
+    "test:unit": "npx tsx lib/rate-limit.test.ts && node scripts/newebpay-crypto-test.mjs && node scripts/newebpay-provider-test.mjs && node scripts/newebpay-verify-callback-test.mjs",
+    "test:submit-flow": "powershell -File scripts/test-submit-flow.ps1",
+    "test:payment-webhook": "powershell -File scripts/test-payment-webhook.ps1",
+    "test:payment-status": "node scripts/test-payment-status.mjs",
+    "test:newebpay:webhook": "powershell -File scripts/test-newebpay-webhook.ps1",
+    "test:create-payment:newebpay": "powershell -File scripts/test-create-payment-newebpay.ps1",
+    "test:payment-panel:newebpay": "powershell -File scripts/test-payment-panel-newebpay.ps1"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
