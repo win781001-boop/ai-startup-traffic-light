@@ -131,6 +131,7 @@ async function singleSearch(query: string, apiKey: string): Promise<TavilySearch
       }))
       .filter((r) => r.title.length > 0);
   } catch (e) {
+    console.warn("[search-support] Tavily search failed:", e instanceof Error ? e.message : "unknown error");
     return [];
   } finally {
     clearTimeout(timer);

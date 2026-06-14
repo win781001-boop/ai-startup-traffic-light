@@ -1,4 +1,5 @@
 ﻿import { verifyInternalRequest } from "@/lib/internal-auth";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { searchMarketContext, formatSearchContext } from "@/lib/search-support";
 import { isIdeaRelevant, isIllegalIdea, hasLowInformation } from "@/lib/idea-validation";
 export interface IdeaInput {
@@ -163,6 +164,16 @@ export async function POST(request: Request) {
   // Prevents external callers from consuming AI API cost directly.
   if (!verifyInternalRequest(request)) {
     return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  // ─── Rate limit (defense-in-depth) ───
+  const ip = getClientIp(request);
+  const limit = await checkRateLimit(ip, 30, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    return Response.json(
+      { error: "rate_limited", message: "請稍後再試。" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
   }
 
   try {
