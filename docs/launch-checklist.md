@@ -325,7 +325,10 @@
 - [ ] Sandbox E2E 未跑通，不可啟用 PAYMENT_PROVIDER=newebpay（需包含 create-payment → MPG 付款 → NotifyURL callback → paid 確認）
 - [ ] Production 小額實刷未通過，不可公開正式收款（需實際刷 49 元並確認完整流程）
 - [ ] AI cost abuse guard 未完成前，不可開放公開流量（含 analyze-idea internal guard、risk-scan rate limit）
-- [ ] Serverless-compatible rate limit 未完成前，不可把現有 memory rate limit 視為 production 級防線
+- [ ] Serverless-compatible rate limit 核心已完成（lib/rate-limit.ts 支援 Upstash Redis REST），但 production 必須設定 UPSTASH env var 才能跨 serverless instance 生效
+  - [ ] production 已設定 UPSTASH_REDIS_REST_URL
+  - [ ] production 已設定 UPSTASH_REDIS_REST_TOKEN
+  - [ ] local/dev 可不設定（自動使用 memory fallback），但正式上線前必須設定
 
 ---
 

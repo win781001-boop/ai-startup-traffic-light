@@ -1555,5 +1555,29 @@ Phase 3W-A 對 /api/feedback 與 /api/error-report 加上 memory rate limit，�
 - [x] npm run build — compiled successfully
 
 ---
+
+## Phase 3U-B-2 — Serverless-Compatible Rate Limiter Docs / Env Checklist（2026-06-14）
+
+### 概述
+
+補齊 production env checklist 與文件紀錄。
+
+### 變更內容
+
+**docs/launch-checklist.md：**
+- 更新 section 15 Production Blocking Gates：
+  - 將籠統的「Serverless-compatible rate limit 未完成」改為具體的 env checklist
+  - production 必須設定 UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+  - 未設定時自動 fallback memory limiter，僅適合 local/dev
+
+**docs/payment-integration-plan.md：**
+- 新增本節記錄
+
+### Phase 3U-B-2 已完成項目
+
+- [x] docs/launch-checklist.md — production blocking gates 更新
+- [x] docs/payment-integration-plan.md — 本文檔更新
+
+---
 ---
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-14
