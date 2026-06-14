@@ -475,27 +475,7 @@ export default function Home() {
         )}
         </div>
 
-        {/* Demo Cases */}
-        {!analysisData && (
-          <section className="mb-12">
-            <h2 className="mb-6 text-center text-lg font-semibold text-white">精選示範案例</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {DEMO_CASES.map((c, i) => {
-                const lc = lightConfig[c.light];
-                return (
-                  <div key={i} className={`rounded-xl border p-5 backdrop-blur-sm ${lc.border}`}>
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className={`inline-block h-2 w-2 rounded-full ${lc.dot}`} />
-                      <span className={`text-sm font-semibold ${lc.css.split(" ")[1]}`}>{lc.label}</span>
-                    </div>
-                    <h3 className="mb-1.5 text-sm font-semibold text-white">{c.title}</h3>
-                    <p className="text-xs leading-relaxed text-text-secondary">{c.judgement}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        {/* Demo Cases removed */}
 
         {/* Footer */}
         <footer className="mt-16 text-center space-y-3">
