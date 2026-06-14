@@ -377,4 +377,66 @@
 
 ---
 
+
+## 16. Production Env Reference (v0.19+)
+
+> 以下為目前 Production 已設定的環境變數整理，供部署、關公測、正式收費時參考。
+
+### 16a. Public Beta ON/OFF
+
+PUBLIC_BETA=true
+NEXT_PUBLIC_PUBLIC_BETA=true
+NEXT_PUBLIC_BETA_END_DATE=2026-06-21
+
+- PUBLIC_BETA=true：後端 /api/submit-analysis 允許建立 0 元 beta_free 紀錄，跳過付款驗證
+- NEXT_PUBLIC_PUBLIC_BETA=true：前端不顯示付款流程，直接進入 6 題表單
+- NEXT_PUBLIC_BETA_END_DATE：只作 UI 顯示（「預計公測至 YYYY/MM/DD」），不自動切換金流
+- 關閉公測時，須將 PUBLIC_BETA 與 NEXT_PUBLIC_PUBLIC_BETA 改為 false 或移除，並重新部署
+- NEXT_PUBLIC_ 變數為 build-time env，修改後不 redeploy 前端不會更新
+
+### 16b. Internal Auth
+
+INTERNAL_API_SECRET=<sensitive>
+
+- Production 必填。/api/submit-analysis 透過 x-internal-secret header 呼叫 /api/analyze-idea
+- 若未設定，線上判定會出現 forbidden
+- Production 不得設定 ALLOW_INTERNAL_API_BYPASS=true
+
+### 16c. Tavily Search
+
+TAVILY_API_KEY=<sensitive>
+
+- Production 若要啟用真實搜尋輔助市場跡象，必須設定
+- 未設定時靜默 fallback，不阻斷判定；AI 僅依賴使用者輸入推估 marketSignals
+- 設定後需 Redeploy
+- 可用 Tavily 後台 usage / credits 變化確認是否有呼叫
+
+### 16d. Redeploy 注意事項
+
+- Vercel Environment Variables 修改後必須 Redeploy
+- 尤其是 NEXT_PUBLIC_ 變數（build-time env），不 redeploy 則前端不會更新
+- 若同時修改多個 env，建議一次修改後一次 Redeploy
+
+### 16e. 正式收費切換提醒（重要）
+
+公測結束恢復收費時，請注意以下事項：
+
+1. 不要打開 /api/confirm-payment — 此 endpoint 的 production guard 必須保留（回 404）
+2. 正式收費應改由 PAYMENT_PROVIDER=newebpay + NewebPay form handoff + NotifyURL webhook + /api/payment-status 流程完成
+3. 關閉公測前需確認以下 NewebPay env 已齊全：
+
+PAYMENT_PROVIDER=newebpay
+NEWEBPAY_MERCHANT_ID=
+NEWEBPAY_HASH_KEY=
+NEWEBPAY_HASH_IV=
+NEWEBPAY_MPG_URL=
+APP_BASE_URL=https://ai-startup-traffic-light.vercel.app
+
+4. 關閉公測步驟建議順序：
+   - 先確認 NewebPay sandbox E2E 測試通過
+   - 補齊 NewebPay production env vars
+   - 將 PUBLIC_BETA 與 NEXT_PUBLIC_PUBLIC_BETA 設為 false
+   - 將 PAYMENT_PROVIDER 設為 newebpay
+   - Redeploy 並執行小額實刷測試
+   - 觀察 /api/payment-webhook 是否正常處理 NotifyURL
 **檢查人員簽名：** ____________________ **日期：** ____________________

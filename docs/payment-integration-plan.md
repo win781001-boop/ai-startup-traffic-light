@@ -1,4 +1,45 @@
-# AI創業紅綠燈 真金流串接設計文件
+
+
+## 24. Public Beta 對付款流程的影響
+
+### 24.1 目前狀態（v0.19+）
+
+- PUBLIC_BETA=true 啟用限時免費公測
+- 前端跳過所有付款步驟（不呼叫 /api/create-payment、不顯示 PaymentPanel）
+- 後端 /api/submit-analysis 在缺少 paymentId 時自動建立 0 元 providerName=beta_free 的付款紀錄，並 auto-confirm
+- Tavily 搜尋與 Internal Auth 皆已上線
+
+### 24.2 與既有付款流程的關係
+
+- Beta 模式不修改任何既有 payment route 或 provider 邏輯
+- /api/confirm-payment 的 production guard 維持不變
+- PAYMENT_PROVIDER=mock 與 PAYMENT_PROVIDER=newebpay 原有流程完全保留
+- 關閉公測時只需移除 env var，不需回退任何程式碼
+
+### 24.3 正式收費切換步驟
+
+1. 前置條件
+   - NewebPay sandbox E2E 測試已通過
+   - NewebPay production env vars 已齊全
+   - Production 小額實刷測試已通過（含 NotifyURL webhook、ReturnURL 導回）
+
+2. 切換步驟
+   - 將 PUBLIC_BETA 改為 false（或移除）
+   - 將 NEXT_PUBLIC_PUBLIC_BETA 改為 false（或移除）
+   - 將 PAYMENT_PROVIDER 設為 newebpay
+   - Redeploy（NEXT_PUBLIC_ 為 build-time env）
+
+3. 切換後驗證
+   - 首頁顯示「首次檢查 49 元」標籤
+   - PrecheckForm 顯示付款相關文案
+   - create-payment → formHtml → NewebPay 跳轉 → NotifyURL → paid 確認完整流程
+   - payment-status API 與 /payment/result 頁面正常運作
+
+### 24.4 注意事項
+
+- /api/confirm-payment 的 production guard 永遠不可以移除
+- 正式金流完稿後仍需保留 webhook 的 production guard
+- Public Beta 期間的 0 元 beta_free 付款紀錄不會影響正式收費後的付款邏輯（providerName 不相干）# AI創業紅綠燈 真金流串接設計文件
 
 > 版本：v0.24
 > 建立日期：2026-06-09
@@ -8,7 +49,7 @@
 
 ## 1. 目前付款狀態
 
-目前（v0.14）仍是 **mock payment** 階段：
+目前（v0.19+）為 **Public Beta** 階段：
 
 - `create-payment` 不串接真實金流，直接回傳一組 mock paymentId
 - `confirm-payment` 使用 mock 確認，不涉及真實付款
