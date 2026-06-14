@@ -1,4 +1,5 @@
 ﻿import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // ─── Allowed issue types ───
 const ALLOWED_ISSUE_TYPES = [
@@ -18,6 +19,15 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
+  // ─── Rate limiting ───
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(ip, 10, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    return Response.json(
+      { error: "rate_limited", message: "請稍後再試。" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
   try {
     const formData = await request.formData();
 

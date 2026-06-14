@@ -1490,5 +1490,35 @@ NewebPay sandbox E2E 目前 **blocked by external dependency**：
 - [x] docs/payment-integration-plan.md — 本文件更新（含 NewebPay blocked 狀態）
 - [x] docs/launch-checklist.md — 新增 production blocking gates
 
+
+## Phase 3W-A — Low-Risk Endpoint Rate Limit 補洞（2026-06-14）
+
+### 概述
+
+Phase 3W-A 對 /api/feedback 與 /api/error-report 加上 memory rate limit，補齊既有 rate limit 風格的防濫用頁面。
+
+### 變更內容
+
+**app/api/feedback/route.ts：**
+- 新增 rate limit：30 req / 10 min per IP，用現有 lib/rate-limit.ts
+- 429 回傳 error: rate_limited + Retry-After header
+- 不改 feedback 資料結構
+
+**app/api/error-report/route.ts：**
+- 新增 rate limit：10 req / 10 min per IP，用現有 lib/rate-limit.ts
+- 429 回傳 error: rate_limited + Retry-After header
+- 保留既有 paymentId unique / MIME / size 檢查
+- 不改 Prisma schema
+- 不接圖片儲存服務
+
+### Phase 3W-A 已完成項目
+
+- [x] app/api/feedback/route.ts — 新增 rate limit（30 req / 10 min）
+- [x] app/api/error-report/route.ts — 新增 rate limit（10 req / 10 min）
+- [x] docs/launch-checklist.md — 補上 feedback / error-report rate limit 檢查項
+- [x] docs/payment-integration-plan.md — 本文檔更新
+
+---
+
 ---
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-14

@@ -1,8 +1,18 @@
 ﻿import { recordStore } from "@/lib/record-store";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const VALID_FEEDBACK = ["準", "普通", "不準"] as const;
 
 export async function POST(request: Request) {
+  // ─── Rate limiting ───
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(ip, 30, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    return Response.json(
+      { error: "rate_limited", message: "請稍後再試。" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
   try {
     const body = await request.json();
     const { analysisId, paymentId, feedback } = body as {

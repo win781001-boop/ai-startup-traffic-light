@@ -82,6 +82,8 @@
 - [ ] 429 有 `Retry-After` header
 - [ ] confirm-payment rate limit 超過時回 429
 - [ ] confirm-payment 429 有 Retry-After header
+- [ ] feedback rate limit 超過時回 429
+- [ ] error-report rate limit 超過時回 429
 
 ---
 
