@@ -19,17 +19,19 @@ interface PrecheckFormProps {
   onNext: () => void;
   expandedExamples: Record<string, boolean>;
   onToggleExample: (key: string) => void;
+  /** When true, show beta-friendly copy with no payment mentions. */
+  isBeta?: boolean;
 }
 
-export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expandedExamples, onToggleExample }: PrecheckFormProps) {
+export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expandedExamples, onToggleExample, isBeta = false }: PrecheckFormProps) {
   const fields = { idea, targetUser, problem };
   const allValid = isFieldValid(idea) && isFieldValid(targetUser) && isFieldValid(problem);
   const btnDisabled = !allValid;
 
   return (
     <section className="mb-8 rounded-2xl border border-border-subtle bg-bg-card/80 p-6 backdrop-blur-sm sm:p-8">
-      <h2 className="mb-2 text-lg font-semibold text-white">先填 3 題，確認要判定的點子</h2>
-      <p className="mb-6 text-sm text-text-secondary">先用 3 題整理你的 AI 點子。付款後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。</p>
+      <h2 className="mb-2 text-lg font-semibold text-white">{isBeta ? "先填 3 題，確認要檢查的點子" : "先填 3 題，確認要判定的點子"}</h2>
+      <p className="mb-6 text-sm text-text-secondary">{isBeta ? "先用 3 題整理你的點子。通過後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。" : "先用 3 題整理你的 AI 點子。付款後再補充 3 題，系統會依需求強弱與執行疑慮給出紅黃綠檢查結果。"}</p>
 
       {(["idea", "targetUser", "problem"] as const).map((key) => {
         const labels: Record<string, { label: string; hint: string; placeholder: string }> = {
@@ -73,7 +75,7 @@ export function PrecheckForm({ idea, targetUser, problem, onChange, onNext, expa
       })}
 
       <button type="button" onClick={onNext} disabled={btnDisabled} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0f0f14] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50">
-        下一步：付費 49 元開始檢查
+        {isBeta ? "下一步：免費開始檢查" : "下一步：付費 49 元開始檢查"}
       </button>
     </section>
   );

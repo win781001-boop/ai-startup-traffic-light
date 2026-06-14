@@ -329,7 +329,7 @@ export default function Home() {
 
                 {/* Precheck Form */}
         {!showPayment && !analysisData && urlHandoffStatus === "none" && (
-          <PrecheckForm
+          <PrecheckForm isBeta={isBeta}
             idea={riskForm.idea}
             targetUser={riskForm.targetUser}
             problem={riskForm.problem}
