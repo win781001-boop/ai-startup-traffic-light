@@ -3,6 +3,7 @@ import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { isIdeaRelevant, isIllegalIdea, hasLowInformation } from "@/lib/idea-validation";
+import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
 // ─── Shared response type ───
 export interface SubmitAnalysisResponse {
@@ -184,22 +185,35 @@ export async function POST(request: Request) {
       );
     }
     const body = await request.json();
-    const { paymentId, analysisId, idea, targetUser, problem, pricing, firstVersion, buildTime } = body as {
+    let { paymentId, analysisId, idea, targetUser, problem, pricing, firstVersion, buildTime } = body as {
       paymentId: string;
       analysisId: string;
     } & IdeaInput;
 
-    if (!paymentId) return Response.json({ error: "缺少付款編號。" }, { status: 400 });
-    if (!analysisId) return Response.json({ error: "缺少分析編號。" }, { status: 400 });
     if (!idea?.trim() || !targetUser?.trim() || !problem?.trim() || !pricing?.trim() || !firstVersion?.trim() || !buildTime?.trim()) {
       return Response.json({ error: "請填寫所有欄位。" }, { status: 400 });
     }
 
-    // Validate payment
-    const paymentErr = await validatePayment(paymentId);
-    if (paymentErr) return paymentErr;
+    // ─── Public Beta: auto-create free payment + analysis when not provided ───
+    let isBetaMode = false;
+    if (process.env.PUBLIC_BETA === "true" && !paymentId) {
+      isBetaMode = true;
+      const { payment, analysis } = await recordStore.createPayment(0, {
+        providerName: "beta_free",
+      });
+      await recordStore.confirmPayment(payment.id);
+      paymentId = payment.id;
+      analysisId = analysis.id;
+    }
 
-    const inputs: Analysis["inputs"] = { idea, targetUser, problem, pricing, firstVersion, buildTime };
+    if (!paymentId) return Response.json({ error: "缺少付款編號。" }, { status: 400 });
+    if (!analysisId) return Response.json({ error: "缺少分析編號。" }, { status: 400 });
+
+    // Validate payment (skipped in beta mode — auto-created and auto-confirmed above)
+    if (!isBetaMode) {
+      const paymentErr = await validatePayment(paymentId);
+      if (paymentErr) return paymentErr;
+    }    const inputs: Analysis["inputs"] = { idea, targetUser, problem, pricing, firstVersion, buildTime };
     const combinedText = `${idea} ${targetUser} ${problem} ${pricing} ${firstVersion} ${buildTime}`;
     const inputObj: IdeaInput = { idea, targetUser, problem, pricing, firstVersion, buildTime };
 

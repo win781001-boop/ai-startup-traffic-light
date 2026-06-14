@@ -21,6 +21,13 @@ import { AnalysisMeta, AnswerSummary, AnalysisSuccess, RevisionNotice } from "@/
 import { lightConfig, formatTime } from "@/components/startup-light/ui";
 import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
+const isBeta = process.env.NEXT_PUBLIC_PUBLIC_BETA === "true";
+const betaEndDate = process.env.NEXT_PUBLIC_BETA_END_DATE || null;
+function formatBetaEndDate(dateStr: string): string {
+  try { return new Date(dateStr).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }); }
+  catch { return dateStr; }
+}
+
 const MIN_LENGTH = 10;
 const MAX_LENGTH = 100;
 
@@ -142,6 +149,12 @@ export default function Home() {
     if (!v(riskForm.idea) || !v(riskForm.targetUser) || !v(riskForm.problem)) return;
     // Note: isLikelyNonBiz is removed since validation moved to server side
     setBoundaryError(null);
+    // Public Beta: skip payment, go directly to full form
+    if (isBeta) {
+      setShowFullForm(true);
+      setFullForm((prev) => ({ ...prev, idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
+      return;
+    }
     setShowPayment(true);
   }
 
@@ -181,7 +194,8 @@ export default function Home() {
 
   async function handleFullSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!paymentData) { setFullError("請先建立付款。"); return; }
+    // Public Beta: skip paymentData check
+    if (!isBeta && !paymentData) { setFullError("請先建立付款。"); return; }
     const allFields = [fullForm.idea, fullForm.targetUser, fullForm.problem, fullForm.pricing, fullForm.firstVersion, fullForm.buildTime];
     if (allFields.some(s => { const t = s?.trim() ?? ""; return t.length < MIN_LENGTH || t.length > MAX_LENGTH; })) {
       setFullError("每題請輸入 10～100 字。"); return;
@@ -190,7 +204,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/submit-analysis", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId: paymentData.id, analysisId, ...fullForm }),
+        body: JSON.stringify(isBeta ? { ...fullForm } : { paymentId: paymentData!.id, analysisId, ...fullForm }),
       });
       const data = await res.json();
       if (data?.status === "duplicate_submission") {
@@ -244,7 +258,10 @@ export default function Home() {
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
           <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不是 AI 做得出來，就代表值得投入時間與成本。</p>
           <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，先把你的 AI 工具、網站、App 或服務點子，整理成紅黃綠檢查結果。</p>
-          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次檢查 49 元</div>
+          {isBeta
+            ? <div className="inline-flex items-center gap-2 rounded-full border border-blue-light/30 bg-blue-light/10 px-4 py-1.5 text-sm font-medium text-blue-light">限時免費公測中</div>
+            : <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次檢查 49 元</div>
+          }
         </header>
 
         {/* Suitable / Unsuitable */}
@@ -344,8 +361,17 @@ export default function Home() {
           onConfirmPayment={handleConfirmPayment}
         />
 
+        {/* Beta mode banner */}
+        {isBeta && showFullForm && !analysisData && (
+          <section className="mb-8 rounded-2xl border border-blue-light/20 bg-blue-light/[0.04] p-6 backdrop-blur-sm sm:p-8 text-center">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-light/30 bg-blue-light/10 px-4 py-1.5 text-sm font-semibold text-blue-light">限時公測</div>
+            <p className="text-sm text-text-secondary">目前為限時公測，暫不收費。</p>
+            {betaEndDate && <p className="mt-1 text-xs text-text-secondary/60">預計公測至 {formatBetaEndDate(betaEndDate)}</p>}
+          </section>
+        )}
+
         {/* Full Assessment Form */}
-        {showFullForm && paymentConfirmed && !analysisData && (
+        {showFullForm && (paymentConfirmed || isBeta) && !analysisData && (
           <PaidQuestionForm
             form={fullForm}
             onChange={updateFullField}
