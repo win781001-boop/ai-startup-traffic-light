@@ -68,6 +68,7 @@ export default function Home() {
   // Feedback state
   const [feedbackSent, setFeedbackSent] = useState<FeedbackValue | null>(null);
   const resultSectionRef = useRef<HTMLDivElement>(null);
+  const fullFormSectionRef = useRef<HTMLDivElement>(null);
   // URL handoff state (from /payment/result or ReturnURL)
   const [urlHandoffStatus, setUrlHandoffStatus] = useState<"none" | "loading" | "paid" | "pending" | "not_found" | "error">("none");
   const [urlPaymentId, setUrlPaymentId] = useState<string | null>(null);
@@ -132,6 +133,16 @@ export default function Home() {
       });
     }
   }, [analysisData, analysisResult]);
+
+  // --- Scroll to full form when entering assessment phase ---
+  useEffect(() => {
+    if (showFullForm && (paymentConfirmed || isBeta) && !analysisData) {
+      requestAnimationFrame(() => {
+        fullFormSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [showFullForm, paymentConfirmed, analysisData]);
+
   function updateRiskField(key: string, value: string) {
     setRiskForm((prev) => ({ ...prev, [key]: value }));
     setBoundaryError(null);
@@ -380,6 +391,7 @@ export default function Home() {
           </section>
         )}
 
+        <div ref={fullFormSectionRef}>
         {/* Full Assessment Form */}
         {showFullForm && (paymentConfirmed || isBeta) && !analysisData && (
           <PaidQuestionForm
@@ -391,6 +403,7 @@ export default function Home() {
             onToggleExample={toggleExample}
           />
         )}
+        </div>
 
         {/* Full Assessment Error */}
         {fullError && !analysisData && (
