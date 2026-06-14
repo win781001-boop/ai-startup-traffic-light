@@ -1520,5 +1520,40 @@ Phase 3W-A 對 /api/feedback 與 /api/error-report 加上 memory rate limit，�
 
 ---
 
+
+
+## Phase 3U-B-1 — Serverless-Compatible Rate Limiter Core（2026-06-14）
+
+### 概述
+
+將 lib/rate-limit.ts 從純 memory Map 改為 dual-backend：
+- 同時存在 UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN 時使用 Upstash Redis REST
+- 未設定時維持 memory fallback（完全向後相容）
+- Upstash backend 發生錯誤時自動降級 memory，不回 500
+
+### 變更內容
+
+**lib/rate-limit.ts：**
+- checkRateLimit() 改為 async
+- 新增 Upstash REST backend（用原生 fetch，無第三方套件）
+- 使用 Redis sorted set 實作 sliding window
+- key prefix: ratelimit:
+- 自動設定 TTL 避免 key 永久累積
+
+**6 個 route：**
+- checkRateLimit() 呼叫處加 await（僅一行變動）
+
+**測試（lib/rate-limit.test.ts）：**
+- 62 項測試全部通過
+- 涵蓋 memory backend、Upstash mock、error fallback、threshold 驗證
+
+### Phase 3U-B-1 已完成項目
+
+- [x] lib/rate-limit.ts — dual-backend 改寫
+- [x] 6 個 route — await 補上
+- [x] lib/rate-limit.test.ts — 62 tests passed
+- [x] npm run build — compiled successfully
+
+---
 ---
 **文件維護者：** ____________________ **最後更新日期：** 2026-06-14

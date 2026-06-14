@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   // ─── Rate limiting ───
   const ip = getClientIp(request);
-  const limit = checkRateLimit(ip, 10, 10 * 60 * 1000);
+  const limit = await checkRateLimit(ip, 10, 10 * 60 * 1000);
   if (!limit.allowed) {
     return Response.json(
       { error: "rate_limited", message: "請稍後再試。" },
