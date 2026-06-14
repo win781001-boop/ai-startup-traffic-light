@@ -7,7 +7,12 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:rate-limit": "npx tsx lib/rate-limit.test.ts",
+    "test:newebpay:crypto": "node scripts/newebpay-crypto-test.mjs",
+    "test:newebpay:provider": "node scripts/newebpay-provider-test.mjs",
+    "test:newebpay:verify-callback": "node scripts/newebpay-verify-callback-test.mjs",
+    "test:unit": "npx tsx lib/rate-limit.test.ts && node scripts/newebpay-crypto-test.mjs && node scripts/newebpay-provider-test.mjs && node scripts/newebpay-verify-callback-test.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
