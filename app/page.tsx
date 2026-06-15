@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
 import type { SubmitAnalysisResponse } from "@/app/api/submit-analysis/route";
@@ -40,6 +40,16 @@ const DEMO_CASES = [
 
 type FeedbackValue = "準" | "普通" | "不準";
 
+function safeScrollIntoView(el: HTMLElement | null): void {
+  if (!el) return;
+  try {
+    el.scrollIntoView({ block: "start" });
+  } catch {
+    el.scrollIntoView(true);
+  }
+}
+
+
 export default function Home() {
   // Risk scan state
   const [riskForm, setRiskForm] = useState({ idea: "", targetUser: "", problem: "" });
@@ -70,9 +80,13 @@ export default function Home() {
   const resultSectionRef = useRef<HTMLDivElement>(null);
   const fullFormSectionRef = useRef<HTMLDivElement>(null);
   // URL handoff state (from /payment/result or ReturnURL)
-  const [urlHandoffStatus, setUrlHandoffStatus] = useState<"none" | "loading" | "paid" | "pending" | "not_found" | "error">("none");
-  const [urlPaymentId, setUrlPaymentId] = useState<string | null>(null);
-  const [urlAnalysisId, setUrlAnalysisId] = useState<string | null>(null);
+  // Read URL params at init time (SSR-safe)
+  const { pid: initialPid, aid: initialAid } = typeof window === "undefined"
+    ? { pid: null as string | null, aid: null as string | null }
+    : (() => { const p = new URLSearchParams(window.location.search); return { pid: p.get("paymentId"), aid: p.get("analysisId") }; })();
+  const [urlHandoffStatus, setUrlHandoffStatus] = useState(initialPid ? "loading" : "none" as "none" | "loading" | "paid" | "pending" | "not_found" | "error");
+  const [urlPaymentId] = useState<string | null>(initialPid);
+  const [urlAnalysisId, setUrlAnalysisId] = useState<string | null>(initialAid);
 
   function toggleExample(key: string) {
     setExpandedExamples((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -80,19 +94,12 @@ export default function Home() {
 
   // On mount, check for paymentId / analysisId from URL query params
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const pid = params.get("paymentId");
-    const aid = params.get("analysisId");
-
-    if (!pid) return;
-
-    setUrlPaymentId(pid);
-    setUrlAnalysisId(aid);
-    setUrlHandoffStatus("loading");
+    if (!urlPaymentId) return;
+    const aid = urlAnalysisId;
 
     (async () => {
       try {
-        const res = await fetch(`/api/payment-status?paymentId=${encodeURIComponent(pid)}`);
+        const res = await fetch(`/api/payment-status?paymentId=${encodeURIComponent(urlPaymentId)}`);
         if (res.status === 404) {
           setUrlHandoffStatus("not_found");
           return;
@@ -107,7 +114,7 @@ export default function Home() {
           const resolvedAnalysisId = data.analysisId || aid;
           setUrlAnalysisId(resolvedAnalysisId);
           setAnalysisId(resolvedAnalysisId);
-          setPaymentData({ id: pid, createdAt: data.paidAt || new Date().toISOString() });
+          setPaymentData({ id: urlPaymentId, createdAt: data.paidAt || new Date().toISOString() });
           setPaymentConfirmed(true);
           setShowFullForm(true);
           setUrlHandoffStatus("paid");
@@ -122,14 +129,14 @@ export default function Home() {
         setUrlHandoffStatus("error");
       }
     })();
-  }, []);
+  }, [urlPaymentId, urlAnalysisId]);
 
 
   // ─── Scroll to result when analysis completes ───
   useEffect(() => {
     if (analysisData?.hasSignal && analysisResult) {
       requestAnimationFrame(() => {
-        resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        safeScrollIntoView(resultSectionRef.current);
       });
     }
   }, [analysisData, analysisResult]);
@@ -138,7 +145,7 @@ export default function Home() {
   useEffect(() => {
     if (showFullForm && (paymentConfirmed || isBeta) && !analysisData) {
       requestAnimationFrame(() => {
-        fullFormSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        safeScrollIntoView(fullFormSectionRef.current);
       });
     }
   }, [showFullForm, paymentConfirmed, analysisData]);
