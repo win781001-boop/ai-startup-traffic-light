@@ -275,12 +275,12 @@ export default function Home() {
 
         {/* Hero */}
         <header className="mb-16 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-16 items-center justify-center">
-            <svg viewBox="0 0 64 160" className="h-full w-full drop-shadow-[0_0_30px_rgba(255,255,255,0.08)]" fill="none">
-              <rect x="8" y="4" width="48" height="152" rx="16" className="fill-white/8 stroke-white/10" strokeWidth="2" />
-              <circle cx="32" cy="36" r="14" className="fill-red-light/30 stroke-red-light/40" strokeWidth="2" />
-              <circle cx="32" cy="80" r="14" className="fill-yellow-light/20 stroke-yellow-light/30" strokeWidth="2" />
-              <circle cx="32" cy="124" r="14" className="fill-green-light/20 stroke-green-light/30" strokeWidth="2" />
+          <div className="mx-auto mb-6 flex h-14 w-28 items-center justify-center">
+            <svg viewBox="0 0 160 64" className="h-full w-full drop-shadow-[0_0_30px_rgba(255,255,255,0.08)]" fill="none">
+              <rect x="4" y="8" width="152" height="48" rx="20" className="fill-white/8 stroke-white/10" strokeWidth="2" />
+              <circle cx="36" cy="32" r="16" className="fill-red-light/30 stroke-red-light/40" strokeWidth="2" />
+              <circle cx="80" cy="32" r="16" className="fill-yellow-light/20 stroke-yellow-light/30" strokeWidth="2" />
+              <circle cx="124" cy="32" r="16" className="fill-green-light/20 stroke-green-light/30" strokeWidth="2" />
             </svg>
           </div>
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
