@@ -284,7 +284,8 @@ export default function Home() {
             </svg>
           </div>
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI創業紅綠燈</h1>
-          <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">不是 AI 做得出來，就代表值得投入時間與成本。</p>
+          <p className="mx-auto mb-1 max-w-lg text-lg leading-relaxed text-text-secondary">AI ?????????????</p>
+          <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">?????????????????</p>
           <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，先把你的 AI 工具、網站、App 或服務點子，整理成紅黃綠檢查結果。</p>
           {isBeta
             ? <div className="inline-flex items-center gap-2 rounded-full border border-blue-light/30 bg-blue-light/10 px-4 py-1.5 text-sm font-medium text-blue-light">限時免費公測中</div>
