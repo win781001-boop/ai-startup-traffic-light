@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "AI創業紅綠燈 | 你的點子，先停看聽",
   description:
     "不要因為 AI 做得出來，就急著開工。先判斷你的點子是紅燈、黃燈，還是綠燈。",
+  metadataBase: new URL("https://aistartuplight.com"),
 };
 
 export default function RootLayout({
