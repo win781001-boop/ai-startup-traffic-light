@@ -521,3 +521,78 @@ APP_BASE_URL=https://ai-startup-traffic-light.vercel.app
 - Without `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, rate limits do not work across serverless instances in production
 - Other cross-instance mechanisms (Tavily daily budget, Public Beta duplicate payload hash) also fail
 - This was already defined as a production blocking gate in Section 15, but was still unset as of 2026-06-17
+
+
+---
+
+## 18. Vercel Production 必填 Env Checklist
+
+> 以下為 Vercel production 環境必須設定的變數總表。
+> 設定後需 Redeploy 才生效（NEXT_PUBLIC_ 為 build-time env）。
+> 未填或錯誤設定可能導致功能中斷或安全缺口。
+
+### 18a. 核心基礎
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 1 | `DATABASE_URL` | **是** | Neon PostgreSQL connection string | — |
+| 2 | `APP_BASE_URL` | **是** | 本站根網址，用於組 NotifyURL / ReturnURL（如 `https://ai-startup-traffic-light.vercel.app`） | `http://localhost:3000` |
+| 3 | `NODE_ENV` | Vercel 自動 | production / development / test | Vercel production 自動設為 `production` |
+
+### 18b. AI / DeepSeek / OpenAI
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 4 | `OPENAI_API_KEY` | **是** | DeepSeek 或 OpenAI API key | — |
+| 5 | `OPENAI_BASE_URL` | **是** | API base URL（DeepSeek: `https://api.deepseek.com/v1`） | `https://api.openai.com/v1` |
+| 6 | `OPENAI_MODEL` | **是** | 模型名稱（DeepSeek: `deepseek-chat`） | `gpt-4o-mini` |
+
+### 18c. Tavily 搜尋（選用但有 cost 風險）
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 7 | `TAVILY_API_KEY` | 選用 | Tavily Search API key；未設定時靜默跳過搜尋 | — |
+| 8 | `TAVILY_DAILY_LIMIT` | **建議 50** | Tavily 每日用量上限（2026-06-17 incident 後建議設 50） | 300 |
+| 9 | `PUBLIC_BETA_TAVILY_QUERY_LIMIT` | 選用 | Public Beta 期間每次 submit 的 Tavily 搜尋次數（非 beta 期無效） | 3 |
+
+### 18d. Internal Auth（production blocking gate）
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 10 | `INTERNAL_API_SECRET` | **是** | 保護 /api/analyze-idea 與 /api/risk-scan 的共享 secret，未設定時判燈流程中斷 | fail-close（永遠 403） |
+| 11 | `ALLOW_INTERNAL_API_BYPASS` | **否** | 僅 local/dev 可用，production 無效 | `false` |
+
+### 18e. Rate Limit / Upstash（production blocking gate）
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 12 | `UPSTASH_REDIS_REST_URL` | **是** | Upstash Redis REST endpoint；未設定時 rate limit 退化成 per-instance memory，serverless 下不可靠 | memory fallback |
+| 13 | `UPSTASH_REDIS_REST_TOKEN` | **是** | Upstash Redis REST token；須與 URL 同時設定 | memory fallback |
+
+### 18f. Public Beta（僅公測期間）
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 14 | `PUBLIC_BETA` | 選用 | `true` 啟用公測模式（跳過付款、0 元 free analysis），正式上線後應移除 | 未設定（非 beta） |
+| 15 | `NEXT_PUBLIC_PUBLIC_BETA` | 選用 | build-time env；前端隱藏付款流程 | 未設定 |
+| 16 | `NEXT_PUBLIC_BETA_END_DATE` | 選用 | UI 顯示公測截止日（格式 YYYY-MM-DD） | — |
+
+### 18g. Payment Provider
+
+| # | Env var | 必填 | 說明 | 預設值 |
+|---|---------|------|------|--------|
+| 17 | `PAYMENT_PROVIDER` | **是** | 付款 provider：`mock`（測試用）或 `newebpay`（正式金流，待 sandbox E2E 通過） | `mock` |
+| 18 | `NEWEBPAY_MERCHANT_ID` | 選用（newebpay 必填） | 藍新商店代號 | — |
+| 19 | `NEWEBPAY_HASH_KEY` | 選用（newebpay 必填） | AES-256-CBC 加密金鑰（32 字元） | — |
+| 20 | `NEWEBPAY_HASH_IV` | 選用（newebpay 必填） | AES-256-CBC 加密 IV（16 字元） | — |
+| 21 | `NEWEBPAY_MPG_URL` | 選用（newebpay 必填） | MPG 門道網址（測試或正式環境） | — |
+
+### 18h. 設定後驗證步驟
+
+1. 確認所有 marked **必填** 或 **建議** 的 env var 皆已填入 Vercel Production 環境
+2. Redeploy production
+3. 執行 `npm run build`（本機驗證通過）
+4. 執行 `npm run test:unit`（本機驗證通過）
+5. 確認 `/api/analyze-idea` 與 `/api/submit-analysis` 流程可正常完成
+6. 確認 `/api/risk-scan` 未帶 `x-internal-secret` 時回 403
+7. 監控 Vercel Logs 確認無 `[rate-limit] Upstash error` 或 `[tavily-budget]` 警告
