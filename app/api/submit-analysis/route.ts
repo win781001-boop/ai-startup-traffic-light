@@ -177,7 +177,11 @@ async function sysErr(
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const limit = await checkRateLimit(ip, 10, 10 * 60 * 1000);
+    const isBeta = process.env.PUBLIC_BETA === "true";
+    // Public Beta: tighter rate limit (3/10min/IP) to prevent abuse
+    // Normal flow: 10/10min/IP
+    const rateLimitMax = isBeta ? 3 : 10;
+    const limit = await checkRateLimit(ip, rateLimitMax, 10 * 60 * 1000);
     if (!limit.allowed) {
       return Response.json(
         { error: "rate_limited", message: "請稍後再試。" },
@@ -260,6 +264,13 @@ export async function POST(request: Request) {
 
     // 3. Low information
     if (hasLowInformation(inputObj)) return reject(analysis, remainingAttempts, "needs_revision", "你填寫的內容資訊不足，請補充收費方式、第一版做法與完成時間。");
+
+    // --- Ordering ---
+    // Rate limit -> field validation -> beta auto-create -> payment validation ->
+    // duplicate/attempt check -> tryClaimAnalysis -> idea validation ->
+    // callAnalyzeIdea (Tavily + AI)
+    // All cost-incurring calls (Tavily / DeepSeek) happen inside
+    // callAnalyzeIdea, AFTER tryClaimAnalysis succeeds.
 
     // 4. Call analyze-idea and process result
     const analysisResult = await callAnalyzeIdea(inputs, request.url);

@@ -241,7 +241,8 @@ export async function POST(request: Request) {
     // High-risk industry check
     const isHighRisk = isHighRiskIdea(combinedText);
 
-    const searchContext = await searchMarketContext(body);
+    const maxTavilyQueries = parseInt(process.env.PUBLIC_BETA_TAVILY_QUERY_LIMIT ?? "", 10) || 3;
+    const searchContext = await searchMarketContext(body, maxTavilyQueries);
     const prompt = buildPrompt(body, searchContext);
 
     const res = await fetch(`${baseUrl}/chat/completions`, {
