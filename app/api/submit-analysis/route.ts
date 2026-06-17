@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 ﻿import { recordStore } from "@/lib/record-store";
 import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
@@ -196,6 +197,55 @@ export async function POST(request: Request) {
 
     if (!idea?.trim() || !targetUser?.trim() || !problem?.trim() || !pricing?.trim() || !firstVersion?.trim() || !buildTime?.trim()) {
       return Response.json({ error: "請填寫所有欄位。" }, { status: 400 });
+    }
+
+
+    // ??? Public Beta duplicate payload guard ???
+    // Same normalized payload within 24h is rejected (prevents replay abuse).
+    // Runs BEFORE beta auto-create to avoid unnecessary DB/API writes.
+    if (process.env.PUBLIC_BETA === "true" && !paymentId) {
+      const normalized = [idea, targetUser, problem, pricing, firstVersion, buildTime]
+        .map(s => (s ?? "").trim().toLowerCase().replace(/s+/g, " "))
+        .join("|");
+      const hash = crypto.createHash("sha256").update(normalized).digest("hex");
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const key = "beta:submission-hash:" + y + "-" + m + "-" + day + ":" + hash;
+      const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL ?? "";
+      const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? "";
+      const useUpstash = UPSTASH_URL.length > 0 && UPSTASH_TOKEN.length > 0;
+      let exists = true;
+      if (useUpstash) {
+        try {
+          const { upstashExec } = await import("@/lib/rate-limit");
+          const results = await upstashExec([["GET", key]]);
+          exists = results[0] !== null;
+        } catch (err) {
+          console.warn("[submit-analysis] Upstash error in duplicate guard:", err instanceof Error ? err.message : err);
+          exists = false;
+        }
+      }
+      if (exists) {
+        console.warn("[submit-analysis] duplicate beta payload blocked: " + hash);
+        return Response.json({
+          status: "duplicate_beta_submission",
+          error: "???????????????",
+        }, { status: 409 });
+      }
+      // Record this hash for future duplicate detection
+      if (useUpstash) {
+        try {
+          const { upstashExec } = await import("@/lib/rate-limit");
+          await upstashExec([
+            ["SET", key, "1"],
+            ["EXPIRE", key, "86400"],
+          ]);
+        } catch (err) {
+          console.warn("[submit-analysis] Upstash set error in duplicate guard:", err instanceof Error ? err.message : err);
+        }
+      }
     }
 
     // ─── Public Beta: auto-create free payment + analysis when not provided ───
