@@ -190,6 +190,79 @@ export async function checkRateLimit(
 
 // --- Test helpers (exported for unit-test use only) ---
 // Exported for unit-test use only - resets the memory store between tests.
+
+// --- Daily counter (for Public Beta daily analysis limits + similar use cases) ---
+// Dual-backend: Upstash Redis REST or in-memory Map with TTL.
+// Used before beta auto-create payment to cap daily global and per-IP usage.
+
+interface DailyCounterEntry {
+  value: number;
+  expiresAt: number;
+}
+const dailyCounterMemStore = new Map<string, DailyCounterEntry>();
+
+/**
+ * Check and increment a daily counter.
+ *
+ * Returns { allowed: boolean, remaining: number }.
+ * - allowed=true: under limit, counter has been incremented; caller should proceed.
+ * - allowed=false: at or over limit, counter NOT incremented; caller should reject.
+ *
+ * TTL: 48 hours (172800s) so the counter survives a full day gap.
+ * Upstash pattern: GET to check, INCR+EXPIRE to increment (not atomic at the
+ * check-vs-increment boundary, matching existing Tavily budget pattern).
+ * Memory pattern: in-memory Map with expiry, local to each serverless instance.
+ *
+ * When limit <= 0 the counter is effectively disabled (always returns allowed).
+ */
+export async function checkDailyCounter(
+  key: string,
+  limit: number,
+  ttlSeconds: number = 172800
+): Promise<{ allowed: boolean; remaining: number }> {
+  if (limit <= 0) return { allowed: true, remaining: Infinity };
+
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL ?? "";
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? "";
+  const useUpstash = UPSTASH_URL.length > 0 && UPSTASH_TOKEN.length > 0;
+
+  if (useUpstash) {
+    try {
+      const results = await upstashExec([["GET", key]]);
+      const current = typeof results[0] === "string" ? parseInt(results[0], 10) : 0;
+      if (current >= limit) {
+        return { allowed: false, remaining: 0 };
+      }
+      await upstashExec([
+        ["INCR", key],
+        ["EXPIRE", key, String(ttlSeconds)],
+      ]);
+      return { allowed: true, remaining: Math.max(0, limit - current - 1) };
+    } catch (err) {
+      console.warn("[daily-counter] Upstash error, falling back to memory:", err instanceof Error ? err.message : err);
+    }
+  }
+
+  // Memory fallback
+  const now = Date.now();
+  let entry = dailyCounterMemStore.get(key);
+  if (!entry || now >= entry.expiresAt) {
+    entry = { value: 0, expiresAt: now + ttlSeconds * 1000 };
+    dailyCounterMemStore.set(key, entry);
+  }
+  if (entry.value >= limit) {
+    return { allowed: false, remaining: 0 };
+  }
+  entry.value++;
+  return { allowed: true, remaining: Math.max(0, limit - entry.value) };
+}
+
+/** Reset the daily counter memory store (unit-test use only). */
+export function _resetDailyCounterStore(): void {
+  dailyCounterMemStore.clear();
+}
+
+// Exported for unit-test use only - resets the memory store between tests.
 export function _resetMemoryStore(): void {
   memStore.clear();
 }

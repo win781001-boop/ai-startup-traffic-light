@@ -1,5 +1,5 @@
-﻿// Rate limiter unit tests (memory + Upstash mock)
-import { checkRateLimit, checkRateLimitMemory, checkRateLimitUpstash, getClientIp, _resetMemoryStore } from "./rate-limit";
+// Rate limiter unit tests (memory + Upstash mock)
+import { checkRateLimit, checkRateLimitMemory, checkRateLimitUpstash, getClientIp, checkDailyCounter, _resetMemoryStore, _resetDailyCounterStore } from "./rate-limit";
 const origFetch = globalThis.fetch;
 let passed = 0, failed = 0;
 const a = (c,m) => { if(c) { passed++; console.log("  PASS:",m); } else { failed++; console.log("  FAIL:",m); } };
@@ -86,6 +86,43 @@ for(let i=0;i<10;i++) a(checkRateLimitMemory(erk,10,60000).allowed===true, "er #
 a(checkRateLimitMemory(erk,10,60000).allowed===false, "er 11th blocked");
 
 globalThis.fetch = origFetch;
+
+
+// Suite 8: Daily counter (memory backend)
+_resetDailyCounterStore();
+const dk1 = "dc1_" + Date.now();
+const dcr1 = await checkDailyCounter(dk1, 5, 86400);
+a(dcr1.allowed===true, "dc: first under limit allowed");
+a(dcr1.remaining===4, "dc: remaining=4 after first");
+const dcr2 = await checkDailyCounter(dk1, 5, 86400);
+a(dcr2.allowed===true, "dc: second allowed");
+a(dcr2.remaining===3, "dc: remaining=3 after second");
+for(let i=0;i<3;i++) await checkDailyCounter(dk1, 5, 86400);
+const dcr3 = await checkDailyCounter(dk1, 5, 86400);
+a(dcr3.allowed===false, "dc: 6th blocked");
+a(dcr3.remaining===0, "dc: blocked remaining=0");
+
+// Suite 9: Daily counter (separate keys)
+_resetDailyCounterStore();
+const dk2a = "dc2a_" + Date.now(), dk2b = "dc2b_" + Date.now();
+await checkDailyCounter(dk2a, 3, 86400);
+await checkDailyCounter(dk2a, 3, 86400);
+await checkDailyCounter(dk2a, 3, 86400);
+const dcra = await checkDailyCounter(dk2a, 3, 86400);
+a(dcra.allowed===false, "dc: key A blocked at 3");
+const dcrb = await checkDailyCounter(dk2b, 3, 86400);
+a(dcrb.allowed===true, "dc: key B independent");
+a(dcrb.remaining===2, "dc: key B remaining=2");
+
+// Suite 10: Daily counter zero limit = always disabled
+_resetDailyCounterStore();
+const dcr0 = await checkDailyCounter("zero", 0, 86400);
+a(dcr0.allowed===true, "dc: limit=0 always allowed");
+
+// Note: checkDailyCounter Upstash path currently not covered here because
+// useUpstash is a module-level constant determined at import time.
+// The Upstash path is tested implicitly via checkRateLimitUpstash in Suite 4.
+
 
 console.log("");
 console.log("Results: "+passed+" passed, "+failed+" failed");

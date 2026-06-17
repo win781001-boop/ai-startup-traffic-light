@@ -576,16 +576,18 @@ APP_BASE_URL=https://ai-startup-traffic-light.vercel.app
 | 14 | `PUBLIC_BETA` | 選用 | `true` 啟用公測模式（跳過付款、0 元 free analysis），正式上線後應移除 | 未設定（非 beta） |
 | 15 | `NEXT_PUBLIC_PUBLIC_BETA` | 選用 | build-time env；前端隱藏付款流程 | 未設定 |
 | 16 | `NEXT_PUBLIC_BETA_END_DATE` | 選用 | UI 顯示公測截止日（格式 YYYY-MM-DD） | — |
+| 17 | `BETA_DAILY_ANALYSIS_LIMIT` | 選用 | Public Beta 每日全域 analysis 上限（預設 30） | 30 |
+| 18 | `BETA_DAILY_IP_LIMIT` | 選用 | Public Beta 每日每 IP analysis 上限（預設 3） | 3 |
 
 ### 18g. Payment Provider
 
 | # | Env var | 必填 | 說明 | 預設值 |
 |---|---------|------|------|--------|
-| 17 | `PAYMENT_PROVIDER` | **是** | 付款 provider：`mock`（測試用）或 `newebpay`（正式金流，待 sandbox E2E 通過） | `mock` |
-| 18 | `NEWEBPAY_MERCHANT_ID` | 選用（newebpay 必填） | 藍新商店代號 | — |
-| 19 | `NEWEBPAY_HASH_KEY` | 選用（newebpay 必填） | AES-256-CBC 加密金鑰（32 字元） | — |
-| 20 | `NEWEBPAY_HASH_IV` | 選用（newebpay 必填） | AES-256-CBC 加密 IV（16 字元） | — |
-| 21 | `NEWEBPAY_MPG_URL` | 選用（newebpay 必填） | MPG 門道網址（測試或正式環境） | — |
+| 19 | `PAYMENT_PROVIDER` | **是** | 付款 provider：`mock`（測試用）或 `newebpay`（正式金流，待 sandbox E2E 通過） | `mock` |
+| 20 | `NEWEBPAY_MERCHANT_ID` | 選用（newebpay 必填） | 藍新商店代號 | — |
+| 21 | `NEWEBPAY_HASH_KEY` | 選用（newebpay 必填） | AES-256-CBC 加密金鑰（32 字元） | — |
+| 22 | `NEWEBPAY_HASH_IV` | 選用（newebpay 必填） | AES-256-CBC 加密 IV（16 字元） | — |
+| 23 | `NEWEBPAY_MPG_URL` | 選用（newebpay 必填） | MPG 門道網址（測試或正式環境） | — |
 
 ### 18h. 設定後驗證步驟
 

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 ﻿import { recordStore } from "@/lib/record-store";
 import type { Analysis } from "@/lib/types";
 import type { IdeaInput, AnalysisResult } from "@/app/api/analyze-idea/route";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, checkDailyCounter } from "@/lib/rate-limit";
 import { isIdeaRelevant, isIllegalIdea, hasLowInformation } from "@/lib/idea-validation";
 import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
 
@@ -246,7 +246,44 @@ export async function POST(request: Request) {
           console.warn("[submit-analysis] Upstash set error in duplicate guard:", err instanceof Error ? err.message : err);
         }
       }
+
+    // --- Public Beta daily analysis limits ---
+    // Runs AFTER duplicate payload guard (so duplicates don't consume daily limit).
+    // Runs BEFORE beta auto-create (avoids unnecessary DB writes for over-limit requests).
+    const betaDailyLimit = parseInt(process.env.BETA_DAILY_ANALYSIS_LIMIT ?? "30", 10);
+    const betaDailyIpLimit = parseInt(process.env.BETA_DAILY_IP_LIMIT ?? "3", 10);
+
+    // Daily global analysis limit
+    const globalLimitKey = "beta:daily-analysis:" + y + "-" + m + "-" + day;
+    {
+      const globalCheck = await checkDailyCounter(globalLimitKey, betaDailyLimit, 172800);
+      if (!globalCheck.allowed) {
+        console.warn("[submit-analysis] beta daily global limit reached: " + globalLimitKey);
+        return Response.json({
+          error: "beta_daily_limit_reached",
+          message: "今日公測名額已滿，請明日再試。",
+        }, { status: 429 });
+      }
     }
+
+    // Daily per-IP analysis limit
+    const ipLimitKey = "beta:daily-ip:" + y + "-" + m + "-" + day + ":" + ip;
+    {
+      const ipCheck = await checkDailyCounter(ipLimitKey, betaDailyIpLimit, 172800);
+      if (!ipCheck.allowed) {
+        console.warn("[submit-analysis] beta daily IP limit reached: " + ipLimitKey);
+        return Response.json({
+          error: "beta_daily_ip_limit_reached",
+          message: "您今日的公測次數已達上限，請明日再試。",
+        }, { status: 429 });
+      }
+    }
+
+    }
+
+
+
+
 
     // ─── Public Beta: auto-create free payment + analysis when not provided ───
     let isBetaMode = false;
