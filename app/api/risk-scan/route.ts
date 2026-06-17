@@ -1,4 +1,5 @@
-﻿import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+﻿import { verifyInternalRequest } from "@/lib/internal-auth";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export interface RiskScanInput {
   idea: string;
@@ -40,6 +41,12 @@ function buildPrompt(input: RiskScanInput): string {
 }
 
 export async function POST(request: Request) {
+  // --- Internal-only guard ---
+  // Prevents external callers from consuming AI API cost directly.
+  if (!verifyInternalRequest(request)) {
+    return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+
   try {
     const ip = getClientIp(request);
     const limit = await checkRateLimit(ip, 30, 10 * 60 * 1000);

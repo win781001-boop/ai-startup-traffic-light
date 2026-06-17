@@ -493,3 +493,31 @@ APP_BASE_URL=https://ai-startup-traffic-light.vercel.app
    - Redeploy 並執行小額實刷測試
    - 觀察 /api/payment-webhook 是否正常處理 NotifyURL
 **檢查人員簽名：** ____________________ **日期：** ____________________
+
+
+---
+
+## 17. 2026-06-17 Post-Incident P0 Patches
+
+> 2026-06-17 Public Beta cost-abuse incident aftermath.
+> Added after read-only security audit on 2026-06-17.
+
+### 17a. /api/risk-scan changed to internal-only
+
+- Added `verifyInternalRequest(request)` guard (same pattern as /api/analyze-idea)
+- Returns 403 without entering any AI / DeepSeek / OpenAI call logic
+- Rate limit (30/10min/IP) retained as defense-in-depth
+- This route has zero frontend callers, safe to lock down
+- Modified file: `app/api/risk-scan/route.ts`
+
+### 17b. Public AI endpoints must not rely solely on memory-fallback rate limit
+
+- `lib/rate-limit.ts` memory fallback is ineffective under Vercel serverless multi-instance
+- Any route calling external paid APIs must have `verifyInternalRequest` or payment validation as the first defense
+- `PUBLIC_BETA_TAVILY_QUERY_LIMIT` and `TAVILY_DAILY_LIMIT` daily budget guards also depend on Upstash; without Upstash they use per-instance memory counting only
+
+### 17c. Upstash Redis is a production blocking gate
+
+- Without `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, rate limits do not work across serverless instances in production
+- Other cross-instance mechanisms (Tavily daily budget, Public Beta duplicate payload hash) also fail
+- This was already defined as a production blocking gate in Section 15, but was still unset as of 2026-06-17
