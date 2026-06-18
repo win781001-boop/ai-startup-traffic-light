@@ -1,4 +1,4 @@
-﻿import type { MetadataRoute } from "next";
+import type { MetadataRoute } from "next";
 
 const baseUrl = "https://aistartuplight.com";
 
@@ -17,7 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/learn/ai-passive-income`,
+      url: `${baseUrl}/learn/ai-side-project`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
