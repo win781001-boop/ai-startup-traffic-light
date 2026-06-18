@@ -50,6 +50,21 @@ function safeScrollIntoView(el: HTMLElement | null): void {
 }
 
 
+
+const webAppSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "AI創業紅綠燈",
+  url: "https://aistartuplight.com",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description: "想做 AI 副業、工具或線上服務前，先回答 6 題，取得紅黃綠燈判定、市場跡象與最大風險摘要。用一杯飲料的價格，在開工前買一次冷靜。",
+  offers: {
+    "@type": "Offer",
+    price: 49,
+    priceCurrency: "TWD",
+  },
+};
 export default function Home() {
   // Risk scan state
   const [riskForm, setRiskForm] = useState({ idea: "", targetUser: "", problem: "" });
@@ -267,6 +282,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{__html: JSON.stringify(webAppSchema)}}
+      />
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-red-light/5 blur-[120px]" />
         <div className="absolute -bottom-40 left-1/4 h-[400px] w-[400px] rounded-full bg-green-light/5 blur-[100px]" />
