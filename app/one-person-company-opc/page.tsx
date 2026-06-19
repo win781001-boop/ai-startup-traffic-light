@@ -1,4 +1,5 @@
 ﻿import type { Metadata } from "next";
+import SiteHeader from "@/components/site/SiteHeader";
 
 export const metadata: Metadata = {
   title: "一人公司 OPC 是什麼？AI 時代的 One Person Company 與超級個體",
@@ -13,8 +14,10 @@ export const metadata: Metadata = {
 
 export default function OnePersonCompanyOpcPage() {
   return (
+    <div className="min-h-screen bg-bg-primary">
+      <SiteHeader />
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
-      <article className="mx-auto max-w-2xl">
+      <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
         <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">
           一人公司 OPC 是什麼？AI 時代的 One Person Company 與超級個體
         </h1>
@@ -126,23 +129,17 @@ export default function OnePersonCompanyOpcPage() {
             在你開工以前，先花十分鐘確認你的點子是不是綠燈。
           </p>
         </section>
-
-        {/* CTA */}
-        <div className="mt-12 rounded-xl border border-white/10 bg-white/5 px-6 py-8 text-center">
-          <p className="mb-4 text-lg leading-relaxed text-white">
-            如果你已經有一個 AI 副業、一人公司或產品想法，
-            可以先用 <strong>AI創業紅綠燈</strong> 做 6 題檢查，
-            確認是不是值得投入。
-          </p>
-          <a
-            href="/"
-            className="inline-block rounded-lg bg-green-light px-8 py-3 text-base font-semibold text-bg-primary transition hover:bg-green-light/90"
-          >
-            開始檢查 →
-          </a>
+        {/* 相關文章 */}
+        <div className="mt-10 rounded-2xl border border-[#2fd88f]/40 bg-[#131823] p-5 sm:p-6">
+          <h2 className="mb-5 text-lg font-semibold text-white">相關文章</h2>
+          <div className="space-y-3">
+            <a href="/learn/ai-side-project" className="block rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white transition hover:border-[#2fd88f]/40 hover:bg-[#131823]">AI 副業不該先開工：開工前先回答 6 個問題</a>
+            <a href="/learn/ai-passive-income" className="block rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white transition hover:border-[#2fd88f]/40 hover:bg-[#131823]">AI 被動收入是真的嗎？開始前先看懂風險</a>
+          </div>
         </div>
       </article>
     </main>
+    </div>
   );
 }
 

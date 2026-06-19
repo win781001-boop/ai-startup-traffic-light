@@ -14,6 +14,7 @@ function isValidAnalysisResult(data: unknown): data is AnalysisResult {
     Array.isArray(d.marketSignals)
   );
 }
+import SiteHeader from "@/components/site/SiteHeader";
 import { PrecheckForm } from "@/components/startup-light/PrecheckForm";
 import { PaymentPanel } from "@/components/startup-light/PaymentPanel";
 import { PaidQuestionForm } from "@/components/startup-light/PaidQuestionForm";
@@ -290,6 +291,8 @@ export default function Home() {
         <div className="absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-red-light/5 blur-[120px]" />
         <div className="absolute -bottom-40 left-1/4 h-[400px] w-[400px] rounded-full bg-green-light/5 blur-[100px]" />
       </div>
+      <SiteHeader />
+
       <div className="relative mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-20">
 
         {/* Hero */}
@@ -302,7 +305,7 @@ export default function Home() {
               <circle cx="124" cy="32" r="16" className="fill-green-light/20 stroke-green-light/30" strokeWidth="2" />
             </svg>
           </div>
-          <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">AI 副業開工前，先做一次紅綠燈檢查</h1>
+          <h1 className="mb-4 text-4xl font-bold leading-snug tracking-tight text-white sm:text-5xl">AI 副業開工前<br />先做一次紅綠燈檢查</h1>
           <p className="mx-auto mb-1 max-w-lg text-lg leading-relaxed text-text-secondary">AI 做得出來，不代表值得投入。</p>
           <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">時間、成本與風險，開工前先停看聽。</p>
           <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，先把你的 AI 工具、網站、App 或服務點子，整理成紅黃綠檢查結果。</p>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SiteHeader from "@/components/site/SiteHeader";
 
 export const metadata: Metadata = {
   title: "AI 被動收入是真的嗎？開始前先看懂風險｜AI創業小學堂",
@@ -13,8 +14,10 @@ export const metadata: Metadata = {
 
 export default function AiPassiveIncomePage() {
   return (
+    <div className="min-h-screen bg-bg-primary">
+      <SiteHeader />
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
-      <article className="mx-auto max-w-2xl">
+      <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
         <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">
           AI 被動收入是真的嗎？開始前先看懂風險
         </h1>
@@ -98,20 +101,16 @@ export default function AiPassiveIncomePage() {
             AI 做得出來，不代表值得投入。人人都能用 AI 做產品的時代，你的競爭優勢不是「會用 AI」，而是「懂市場」。
           </p>
         </section>
-
-        {/* CTA */}
-        <div className="mt-12 rounded-xl border border-white/10 bg-white/5 px-6 py-8 text-center">
-          <p className="mb-4 text-lg leading-relaxed text-white">
-            如果你已經有一個 AI 副業、AI 工具或一人公司想法，開始前可以先用 <strong>AI創業紅綠燈</strong> 做一次 6 題檢查。
-          </p>
-          <a
-            href="/"
-            className="inline-block rounded-lg bg-green-light px-8 py-3 text-base font-semibold text-bg-primary transition hover:bg-green-light/90"
-          >
-            做一次紅綠燈檢查
-          </a>
+        {/* 相關文章 */}
+        <div className="mt-10 rounded-2xl border border-[#2fd88f]/40 bg-[#131823] p-5 sm:p-6">
+          <h2 className="mb-5 text-lg font-semibold text-white">相關文章</h2>
+          <div className="space-y-3">
+            <a href="/learn/ai-side-project" className="block rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white transition hover:border-[#2fd88f]/40 hover:bg-[#131823]">AI 副業不該先開工：開工前先回答 6 個問題</a>
+            <a href="/one-person-company-opc" className="block rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white transition hover:border-[#2fd88f]/40 hover:bg-[#131823]">一人公司 OPC 是什麼？AI 時代的 One Person Company 與超級個體</a>
+          </div>
         </div>
       </article>
     </main>
+    </div>
   );
 }

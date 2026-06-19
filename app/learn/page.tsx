@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
+import SiteHeader from "@/components/site/SiteHeader";
 
 export const metadata: Metadata = {
   title: "AI創業小學堂｜AI 副業、一人公司與開工前風險檢查",
@@ -26,10 +27,16 @@ const articles = [
       "想用 AI 做副業或工具前，先確認市場、付費意願、MVP、獲客與時間成本。",
     tags: ["AI 副業", "MVP", "市場驗證"],
   },
+  {
+    title: "AI 被動收入是真的嗎？解構個人被動收入的真實面目",
+    url: "/learn/ai-passive-income",
+    description:
+      "解析 AI 個人被動收入的紋路、常見誤區與實踐策略，看清什麼是真的、什麼只是行銷噱頭。",
+    tags: ["AI 被動收入", "個人創業", "實踐策略"],
+  },
 ];
 
 const upcoming = [
-  "AI 被動收入是真的嗎？",
   "AI Agent 可以創業嗎？",
   "怎麼知道有人願意付費？",
   "MVP 切多大才對？",
@@ -37,6 +44,8 @@ const upcoming = [
 
 export default function LearnPage() {
   return (
+    <div className="min-h-screen bg-bg-primary">
+      <SiteHeader />
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <div className="mx-auto max-w-2xl">
         <h1 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
@@ -108,6 +117,7 @@ export default function LearnPage() {
           </a>
         </div>
       </div>
-    </main>
+  </main>
+      </div>
   );
 }
