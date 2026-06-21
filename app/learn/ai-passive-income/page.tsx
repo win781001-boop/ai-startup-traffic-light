@@ -18,7 +18,7 @@ export default function AiPassiveIncomePage() {
       <SiteHeader />
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
-        <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 className="mb-6 text-3xl font-bold leading-[1.35] tracking-tight text-white sm:text-4xl">
           AI 被動收入是真的嗎？<br />開始前先看懂風險
         </h1>
 

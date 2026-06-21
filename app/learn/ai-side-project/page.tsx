@@ -18,7 +18,7 @@ export default function AiSideProjectPage() {
       <SiteHeader />
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
-        <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 className="mb-6 text-3xl font-bold leading-[1.35] tracking-tight text-white sm:text-4xl">
           AI 副業不該先開工：<br />開工前先回答 6 個問題
         </h1>
 
@@ -33,10 +33,12 @@ export default function AiSideProjectPage() {
             但這正是問題所在。AI 讓開工變快，也讓錯誤決策變快。以前花三個月才發現的坑，現在三週就踩進去了。真正麻煩的不是做不出來，而是做完才發現沒人要。
           </p>
 
-          {/* Threads-ready section */}
-          <div className="my-6 border-l-2 border-yellow-light/40 py-2 pl-4 text-sm italic text-text-secondary/80">
+          <figure className="my-6 border-l-2 border-yellow-light/40 py-2 pl-4">
+            <blockquote className="text-sm italic text-text-secondary/80">
             很多 AI 副業不是死在技術，而是死在「根本沒人想買」。你以為是在開發產品，其實是在開發自己的幻想。
-          </div>
+            </blockquote>
+            <figcaption className="mt-2 block text-xs not-italic text-text-secondary/70">— Agares Zhou</figcaption>
+          </figure>
 
           <h2 className="mt-10 text-xl font-semibold text-white">
             AI 副業不是不能做，而是不能跳過判斷
@@ -55,10 +57,12 @@ export default function AiSideProjectPage() {
             不要問「你會買嗎」，要問「你上次遇到這個問題時，怎麼解決的？」。問真實行為，不要問意願。
           </p>
 
-          {/* Threads-ready section */}
-          <div className="my-6 border-l-2 border-yellow-light/40 py-2 pl-4 text-sm italic text-text-secondary/80">
+          <figure className="my-6 border-l-2 border-yellow-light/40 py-2 pl-4">
+            <blockquote className="text-sm italic text-text-secondary/80">
             不要問朋友「這個工具很酷吧？」。朋友會說「很酷」。然後你花兩個月做完，發現他根本不會付錢。把朋友的稱讚當成市場驗證，是最貴的副業錯誤。
-          </div>
+            </blockquote>
+            <figcaption className="mt-2 block text-xs not-italic text-text-secondary/70">— Agares Zhou</figcaption>
+          </figure>
 
           <h2 className="mt-10 text-xl font-semibold text-white">
             問題二：這個問題現在有人在花錢或花時間處理嗎？
