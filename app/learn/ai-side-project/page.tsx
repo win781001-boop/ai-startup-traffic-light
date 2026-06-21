@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import SiteHeader from "@/components/site/SiteHeader";
 
 export const metadata: Metadata = {
-  title: "AI 副業不該先開工：開工前先回答 6 個問題｜AI創業小學堂",
+  title: "AI 副業不該先開工：<br />開工前先回答 6 個問題｜AI創業小學堂",
   description:
     "想做 AI 副業或 AI 工具，別只問能不能做。開始前先檢查目標使用者、付費意願、MVP、獲客來源與時間成本。AI 做得出來，不代表值得投入。",
   openGraph: {
@@ -18,11 +18,8 @@ export default function AiSideProjectPage() {
       <SiteHeader />
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
-        <p className="mb-2 text-sm text-text-secondary">
-          AI創業小學堂 · 副業開工前檢查
-        </p>
         <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          AI 副業不該先開工：開工前先回答 6 個問題
+          AI 副業不該先開工：<br />開工前先回答 6 個問題
         </h1>
 
         <section className="space-y-5 leading-relaxed text-text-secondary">
