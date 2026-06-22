@@ -310,8 +310,8 @@ export default function Home() {
           <p className="mx-auto mb-3 max-w-lg text-lg leading-relaxed text-text-secondary">時間、成本與風險，開工前先停看聽。</p>
           <p className="mx-auto mb-6 max-w-lg text-sm leading-relaxed text-text-secondary/70">填完六題，先把你的 AI 工具、網站、App 或服務點子，整理成紅黃綠檢查結果。</p>
           {isBeta
-            ? <div className="inline-flex items-center gap-2 rounded-full border border-blue-light/30 bg-blue-light/10 px-4 py-1.5 text-sm font-medium text-blue-light">限時免費公測中</div>
-            : <div className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次檢查 49 元</div>
+            ? <div style={{display:"none"}} className="inline-flex items-center gap-2 rounded-full border border-blue-light/30 bg-blue-light/10 px-4 py-1.5 text-sm font-medium text-blue-light">限時免費公測中</div>
+            : <div style={{display:"none"}} className="inline-flex items-center gap-2 rounded-full border border-yellow-light/30 bg-yellow-light/10 px-4 py-1.5 text-sm font-medium text-yellow-light">首次檢查 49 元</div>
           }
         </header>
 
