@@ -48,6 +48,8 @@
         <footer className="mt-12 text-center space-y-3">
           <a href="/" className="inline-block text-sm text-white/40 hover:text-white/60 transition underline underline-offset-2">← 回首頁</a>
           <p className="text-xs text-white/15">AI創業紅綠燈 v0.7-alpha — 僅供參考，請自行驗證市場需求</p>
+          <p className="text-xs text-white/30">聯絡信箱：<a href="mailto:service@aistartuplight.com" className="text-white/30 hover:text-white/60 transition">service@aistartuplight.com</a></p>
+          <p className="text-xs text-white/30">服務時間：週一至週五 09:00–18:00</p>
         </footer>
       </div>
     </div>
