@@ -2,10 +2,12 @@
 
 import { mockPaymentProvider } from "./providers/mock";
 import { newebpayProvider } from "./providers/newebpay";
+import { ecpayProvider } from "./providers/ecpay";
 import type { PaymentProviderName, PaymentProvider } from "./types";
 
 export { mockPaymentProvider } from "./providers/mock";
 export { newebpayProvider } from "./providers/newebpay";
+export { ecpayProvider } from "./providers/ecpay";
 export type {
   PaymentProviderName,
   CreatePaymentInput,
@@ -33,7 +35,7 @@ export function getPaymentProvider(name: PaymentProviderName): PaymentProvider {
     case "newebpay":
       return newebpayProvider;
     case "ecpay":
-      throw new Error("Payment provider not implemented yet: ecpay");
+      return ecpayProvider;
     case "linepay":
       throw new Error("Payment provider not implemented yet: linepay");
     default:

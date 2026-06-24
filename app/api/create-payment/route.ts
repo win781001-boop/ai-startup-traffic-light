@@ -8,12 +8,13 @@ import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
  *
  * Creates a payment order. Provider selection depends on PAYMENT_PROVIDER env:
  *   - "newebpay" → uses NewebPay MPG, returns formHtml
+ *   - "ecpay"    → uses ECPay AioCheckOut V5, returns formHtml
  *   - unset / "mock" → uses mock provider (existing behavior, no formHtml)
  *
- * NewebPay flow:
+ * Real provider flow (newebpay / ecpay):
  *   1. Create Payment record (pending) with auto-generated paymentId
- *   2. Call newebpayProvider.createPayment() with paymentId as merchantOrderNo
- *   3. Return formHtml so the frontend (or future PaymentPanel) can redirect
+ *   2. Call provider.createPayment() with paymentId as merchantOrderNo
+ *   3. Return formHtml so the frontend can redirect
  *
  * Mock flow (unchanged):
  *   1. Call mockProvider.createPayment()
@@ -31,7 +32,7 @@ export interface CreatePaymentResponse {
     paidAt: string | null;
   };
   analysisId: string;
-  /** Present only when PAYMENT_PROVIDER=newebpay. */
+  /** Present only when PAYMENT_PROVIDER=newebpay or ecpay. */
   formHtml?: string;
 }
 
@@ -50,6 +51,10 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+/** Real payment provider names that use formHtml. */
+const REAL_PROVIDERS = ["newebpay", "ecpay"] as const;
+type RealProvider = (typeof REAL_PROVIDERS)[number];
+
 export async function POST(request: Request) {
   const ip = getClientIp(request);
   const limit = await checkRateLimit(ip, 10, 10 * 60 * 1000);
@@ -61,18 +66,20 @@ export async function POST(request: Request) {
   }
 
   const amountTwd = FIRST_REPORT_PRICE_TWD;
-  const providerName = process.env.PAYMENT_PROVIDER === "newebpay" ? "newebpay" : "mock";
+  const rawProvider = process.env.PAYMENT_PROVIDER;
+  const providerName: RealProvider | "mock" =
+    REAL_PROVIDERS.includes(rawProvider as RealProvider) ? (rawProvider as RealProvider) : "mock";
 
-  if (providerName === "newebpay") {
-    // ─── NewebPay flow ───
+  if (providerName !== "mock") {
+    // ─── Real provider flow (newebpay / ecpay) ───
     // 1. Create Payment + Analysis records first (gets auto-generated IDs)
     const { payment, analysis } = await recordStore.createPayment(amountTwd, {
-      providerName: "newebpay",
+      providerName,
     });
 
-    // 2. Call NewebPay provider with paymentId as merchantOrderNo
+    // 2. Call provider with paymentId as merchantOrderNo
     const baseUrl = getBaseUrl();
-    const provider = getPaymentProvider("newebpay");
+    const provider = getPaymentProvider(providerName);
     const providerResult = await provider.createPayment({
       amountTwd,
       description: "AI創業紅綠燈 首次完整報告",
@@ -81,7 +88,16 @@ export async function POST(request: Request) {
       returnUrl: `${baseUrl}/payment/result?paymentId=${payment.id}&analysisId=${analysis.id}`,
     });
 
-    // 3. Whitelist safe fields — never expose HashKey/HashIV/TradeInfo/TradeSha to client
+    // 3. Store providerPaymentId on Payment record for callback lookup.
+    //    providerPaymentId is the short MerchantTradeNo sent to ECPay.
+    //    It's written now (before callback arrives) so the webhook handler
+    //    can find this Payment by MerchantTradeNo when ECPay calls us back.
+    await recordStore.updatePaymentProviderData(payment.id, {
+      providerPaymentId: providerResult.providerPaymentId,
+      providerRawResponse: JSON.stringify(providerResult.raw ?? {}),
+    });
+
+    // 4. Whitelist safe fields — never expose HashKey/HashIV/CheckMacValue to client
     const { amountTwd: _amt, providerName: _pn, providerPaymentId, providerRawResponse, ...safePayment } = payment;
     return Response.json({
       payment: safePayment,

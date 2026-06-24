@@ -171,6 +171,34 @@ export const recordStore = {
     return toPayment(p);
   },
 
+  /**
+   * ? providerPaymentId ?? Payment?
+   * ?? ECPay callback ??? MerchantTradeNo ???? Payment?
+   * providerPaymentId ? unique???? findFirst?
+   */
+  async getPaymentByProviderPaymentId(providerPaymentId: string): Promise<Payment | null> {
+    const p = await prisma.payment.findFirst({ where: { providerPaymentId } });
+    if (!p) return null;
+    return toPayment(p);
+  },
+
+  /**
+   * ?? Payment ? provider ?????providerPaymentId / providerRawResponse??
+   * ?? create-payment ? real provider flow ???
+   * ? provider ???????????? DB???? callback lookup ???
+   */
+  async updatePaymentProviderData(
+    paymentId: string,
+    data: { providerPaymentId?: string | null; providerRawResponse?: string | null },
+  ): Promise<void> {
+    const updateData: Record<string, unknown> = {};
+    if (data.providerPaymentId !== undefined) updateData.providerPaymentId = data.providerPaymentId;
+    if (data.providerRawResponse !== undefined) updateData.providerRawResponse = data.providerRawResponse;
+    if (Object.keys(updateData).length > 0) {
+      await prisma.payment.update({ where: { id: paymentId }, data: updateData });
+    }
+  },
+
   async usePayment(id: string): Promise<Payment | null> {
     const p = await prisma.payment.findUnique({ where: { id } });
     if (!p || p.used) return null;
@@ -334,4 +362,3 @@ export const recordStore = {
     return toPaymentWebhookLog(updated);
   },
 };
-
