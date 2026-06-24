@@ -27,19 +27,20 @@ export const ECPAY_ENCRYPT_TYPE = "1";
 // ─── URL encoding helpers ───
 
 /**
- * URL-encode a string matching ECPay's expected encoding.
+ * URL-encode a string matching PHP urlencode() for ECPay CheckMacValue.
  *
- * ECPay uses rawurlencode (RFC 3986) for EncryptType=1:
- *   - Spaces → %20 (not +)
- *   - Reserved chars percent-encoded with LOWERCASE hex digits
- *
- * Standard Node.js encodeURIComponent produces uppercase hex,
- * so we lowercase the result.
+ * PHP urlencode():
+ *   - Spaces → +
+ *   - Reserved chars percent-encoded with UPPERCASE hex digits
+ *   - The caller lowercases per ECPay spec Step 6 before SHA-256
  */
 function urlEncode(str: string): string {
+  // Match PHP urlencode(): space -> +, encode ! ' ( ) * ~ which
+  // encodeURIComponent leaves unencoded. Hex stays uppercase (PHP urlencode
+  // produces uppercase hex; the caller lowercases per ECPay spec Step 6).
   return encodeURIComponent(str)
     .replace(/%20/g, "+")
-    .toLowerCase();
+    .replace(/[!'()*~]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 }
 
 // ─── CheckMacValue ───
@@ -51,7 +52,7 @@ function urlEncode(str: string): string {
  *   1. Collect all params, exclude "CheckMacValue" itself
  *   2. Sort keys alphabetically (ASCII ascending)
  *   3. Build raw = "HashKey={hashKey}&{k1}={v1}&{k2}={v2}&...&HashIV={hashIV}"
- *   4. URL-encode the raw string (RFC 3986, lowercase hex)
+ *   4. URL-encode the raw string (PHP urlencode, uppercase hex)
  *   5. SHA-256 hash
  *   6. Convert to uppercase hex
  *
@@ -65,7 +66,7 @@ export function generateCheckMacValue(
   hashKey: string,
   hashIV: string,
 ): string {
-  // 1. Sort keys alphabetically (ASCII order, case-sensitive)
+  // 1. Sort keys alphabetically (ASCII order, matching PHP uksort + strcasecmp)
   const sortedKeys = Object.keys(params).sort((a, b) => a.localeCompare(b));
 
   // 2. Build raw string
@@ -76,12 +77,27 @@ export function generateCheckMacValue(
   }
   raw += `&HashIV=${hashIV}`;
 
-  // 3. URL-encode (RFC 3986) → lowercase hex
+  // 3. URL-encode (PHP urlencode compatible: uppercase hex, space → +)
   const encoded = urlEncode(raw);
 
-  // 4. SHA-256 → uppercase hex
-  const hash = crypto.createHash("sha256").update(encoded, "utf8").digest("hex");
-  return hash.toUpperCase();
+  // 4. Lowercase per ECPay spec Step 6 ("將整段字串全部轉為小寫")
+  const lowerEncoded = encoded.toLowerCase();
+
+  // 5. SHA-256 → uppercase hex
+  const hash = crypto.createHash("sha256").update(lowerEncoded, "utf8").digest("hex");
+  const checkMacValue = hash.toUpperCase();
+
+  // Debug: log masked raw + encoded + hash (keys masked for safety)
+  const maskKey = (s: string) => s.length > 6 ? s.slice(0, 3) + "..." + s.slice(-3) : s;
+  const maskedRaw = raw
+    .replace(hashKey, maskKey(hashKey))
+    .replace(hashIV, maskKey(hashIV));
+  console.log("[ecpay] checkmac keys", JSON.stringify(sortedKeys));
+  console.log("[ecpay] checkmac raw", maskedRaw);
+  console.log("[ecpay] checkmac encoded", lowerEncoded);
+  console.log("[ecpay] checkmac hash", checkMacValue);
+
+  return checkMacValue;
 }
 
 /**
