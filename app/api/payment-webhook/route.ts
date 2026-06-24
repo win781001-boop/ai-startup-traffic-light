@@ -116,6 +116,7 @@ async function handleMockWebhook(request: Request): Promise<Response> {
 
   await recordStore.updatePaymentWebhookLogVerification(log.id, { verified: true, signatureValid: true, amountMatch: true });
   const updatedPayment = await recordStore.confirmPaymentByWebhook(paymentId!, { providerPaymentId: providerPaymentId ?? paymentId, providerName });
+  console.log("[payment-webhook] confirmPayment result:", !!updatedPayment);
   if (!updatedPayment) {
     await recordStore.markPaymentWebhookLogProcessed(log.id, { errorMessage: "payment already processed" });
     return Response.json({ ok: true, processed: false, reason: "payment_already_processed" });
@@ -185,6 +186,7 @@ async function handleNewebPayWebhook(request: Request): Promise<Response> {
 
   await recordStore.updatePaymentWebhookLogVerification(log.id, { verified: true, signatureValid: true, amountMatch: true });
   const updatedPayment = await recordStore.confirmPaymentByWebhook(payment.id, { providerPaymentId, providerName: "newebpay" });
+  console.log("[payment-webhook] confirmPayment result:", !!updatedPayment);
   if (!updatedPayment) {
     await recordStore.markPaymentWebhookLogProcessed(log.id, { errorMessage: "payment already processed" });
     return Response.json({ ok: true, processed: false, reason: "payment_already_processed" });
@@ -237,15 +239,32 @@ function buildNewebPayDedupeKey(
  *   - Does NOT trust OrderResultURL or ClientBackURL for payment confirmation
  */
 async function handleECPayWebhook(request: Request): Promise<Response> {
+  console.log("[payment-webhook] entered", JSON.stringify({
+    method: request.method,
+    url: request.url,
+    contentType: request.headers.get("content-type") ?? "",
+  }));
   // 1. Parse form-urlencoded body
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("application/x-www-form-urlencoded")) {
+    console.log("[payment-webhook] content-type error, returning 0|content_type_error");
     return new Response("0|content_type_error");
   }
 
+  console.log("[payment-webhook] content-type OK, reading body...");
   const rawBody = await request.text();
+  console.log("[payment-webhook] raw body length:", rawBody.length);
+  console.log("[payment-webhook] raw body preview:", rawBody.slice(0, 300));
   const params = new URLSearchParams(rawBody);
   const payload: Record<string, unknown> = Object.fromEntries(params.entries());
+  console.log("[payment-webhook] parsed params", JSON.stringify({
+    hasMerchantTradeNo: !!payload.MerchantTradeNo,
+    hasTradeNo: !!payload.TradeNo,
+    RtnCode: payload.RtnCode ?? "(missing)",
+    RtnMsg: (payload.RtnMsg ?? "(missing)").toString().slice(0, 100),
+    hasCheckMacValue: !!payload.CheckMacValue,
+    allKeys: Object.keys(payload),
+  }));
 
   // 2. Call verifyCallback (pure CheckMacValue + RtnCode parsing)
   let verifyResult;
@@ -258,8 +277,16 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
       headers: Object.fromEntries(request.headers.entries()),
     });
   } catch {
+    console.log("[payment-webhook] callback error, returning 0|callback_error");
     return new Response("0|callback_error");
   }
+
+  console.log("[payment-webhook] verify result", JSON.stringify({
+    paid: verifyResult?.paid,
+    providerPaymentId: verifyResult?.providerPaymentId ?? "(none)",
+    amountTwd: verifyResult?.amountTwd,
+    rawReason: verifyResult?.raw?.reason ?? "(none)",
+  }));
 
   // 3. If not paid — differentiate by failure reason:
   //    - CheckMacValue failure (potential forgery) → 0|... (ECPay will retry)
@@ -268,10 +295,12 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
     const reason = (verifyResult.raw?.reason as string) || "";
     const isSignatureFailure = reason === "check_mac_value_mismatch" || reason === "missing_check_mac_value";
     if (isSignatureFailure) {
+      console.log("[payment-webhook] signature failure, returning 0|" + reason);
       return new Response(`0|${reason}`);
     }
     // Genuine payment failure notification (RtnCode !== 1, missing fields, etc.)
     // Acknowledge receipt so ECPay does not keep retrying.
+    console.log("[payment-webhook] genuine failure (not paid), returning 1|OK");
     return new Response("1|OK");
   }
 
@@ -280,28 +309,39 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
   // 4. Extract MerchantTradeNo (short alphanumeric ID sent to ECPay)
   const merchantTradeNo = verifyResult.raw?.merchantTradeNo as string | undefined;
   if (!merchantTradeNo) {
+    console.log("[payment-webhook] missing merchantTradeNo, returning 0|missing_merchant_trade_no");
     return new Response("0|missing_merchant_trade_no");
   }
 
   // 5. Lookup Payment by providerPaymentId (= MerchantTradeNo)
   //    This short ID was stored on the Payment record during create-payment.
   const payment = await recordStore.getPaymentByProviderPaymentId(merchantTradeNo);
+  console.log("[payment-webhook] payment lookup", JSON.stringify({
+    merchantTradeNo,
+    found: !!payment,
+    paymentId: payment?.id ?? "(none)",
+    paymentStatus: payment?.status ?? "(none)",
+  }));
   if (!payment) {
+    console.log("[payment-webhook] payment not found, returning 0|payment_not_found");
     return new Response("0|payment_not_found");
   }
 
   // 6. Amount match (verify TradeAmt matches our record)
   //    amountTwd must be present when paid=true (enforced by verifyCallback guard).
   if (verifyResult.amountTwd === undefined) {
+    console.log("[payment-webhook] missing amount, returning 0|missing_amount");
     return new Response("0|missing_amount");
   }
   if (verifyResult.amountTwd !== payment.amountTwd) {
+    console.log("[payment-webhook] amount mismatch, returning 0|amount_mismatch");
     return new Response("0|amount_mismatch");
   }
 
   // 7. Validate providerPaymentId (ECPay TradeNo, must not be "not_verified")
   const providerPaymentId = verifyResult.providerPaymentId;
   if (!providerPaymentId || providerPaymentId === "not_verified") {
+    console.log("[payment-webhook] invalid providerPaymentId, returning 0|invalid_provider_payment_id");
     return new Response("0|invalid_provider_payment_id");
   }
 
@@ -310,6 +350,7 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
   const existing = await recordStore.getPaymentWebhookLogByDedupeKey(dedupeKey);
   if (existing) {
     // Already processed — acknowledge to prevent retries
+    console.log("[payment-webhook] already processed, returning 1|OK");
     return new Response("1|OK");
   }
 
@@ -325,6 +366,7 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
       rawPayload: rawBody,
     });
   } catch {
+    console.log("[payment-webhook] log creation failed, returning 0|log_failed");
     return new Response("0|log_failed");
   }
 
@@ -334,12 +376,13 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
     signatureValid: true,
     amountMatch: true,
   });
-
   // 11. Confirm payment (safe: only updates if status === "pending")
+  console.log("[payment-webhook] calling confirmPaymentByWebhook...");
   const updatedPayment = await recordStore.confirmPaymentByWebhook(payment.id, {
     providerPaymentId,
     providerName: "ecpay",
   });
+  console.log("[payment-webhook] confirmPayment result:", !!updatedPayment);
 
   if (!updatedPayment) {
     await recordStore.markPaymentWebhookLogProcessed(log.id, {
@@ -350,6 +393,7 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
 
   // 12. Mark success and acknowledge
   await recordStore.markPaymentWebhookLogProcessed(log.id);
+  console.log("[payment-webhook] success, returning 1|OK");
   return new Response("1|OK");
 }
 
