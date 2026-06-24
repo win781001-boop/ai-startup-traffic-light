@@ -37,7 +37,9 @@ export const ECPAY_ENCRYPT_TYPE = "1";
  * so we lowercase the result.
  */
 function urlEncode(str: string): string {
-  return encodeURIComponent(str).toLowerCase();
+  return encodeURIComponent(str)
+    .replace(/%20/g, "+")
+    .toLowerCase();
 }
 
 // ─── CheckMacValue ───

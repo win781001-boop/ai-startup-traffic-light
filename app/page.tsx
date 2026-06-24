@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { AnalysisResult } from "@/app/api/analyze-idea/route";
 import type { SubmitAnalysisResponse } from "@/app/api/submit-analysis/route";
@@ -226,6 +226,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/create-payment", { method: "POST" });
       const data = await res.json();
+      console.log("[page] create-payment response", JSON.stringify({ keys: Object.keys(data), hasFormHtml: !!data.formHtml, formHtmlLength: data.formHtml?.length, paymentStatus: data.payment?.status }));
       if (!res.ok) { setFullError(data.error || "付款建立失敗"); return; }
       setPaymentData(data.payment);
       setAnalysisId(data.analysisId);

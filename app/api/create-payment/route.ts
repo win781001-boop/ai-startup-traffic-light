@@ -1,4 +1,4 @@
-﻿import { recordStore } from "@/lib/record-store";
+import { recordStore } from "@/lib/record-store";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getPaymentProvider } from "@/lib/payments";
 import { FIRST_REPORT_PRICE_TWD } from "@/lib/pricing";
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
     // 4. Whitelist safe fields — never expose HashKey/HashIV/CheckMacValue to client
     const { amountTwd: _amt, providerName: _pn, providerPaymentId, providerRawResponse, ...safePayment } = payment;
     console.log("[create-payment] REAL PROVIDER: returning formHtml?", !!providerResult.formHtml, "provider:", providerResult.provider);
+    console.log("[create-payment] response debug", JSON.stringify({ hasFormHtml: !!providerResult.formHtml, formHtmlLength: providerResult.formHtml?.length, responseKeys: Object.keys({ payment: safePayment, analysisId: analysis.id, formHtml: providerResult.formHtml }) }));
     return Response.json({
       payment: safePayment,
       analysisId: analysis.id,
