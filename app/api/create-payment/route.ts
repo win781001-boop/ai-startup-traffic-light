@@ -56,6 +56,10 @@ const REAL_PROVIDERS = ["newebpay", "ecpay"] as const;
 type RealProvider = (typeof REAL_PROVIDERS)[number];
 
 export async function POST(request: Request) {
+  console.log("[create-payment] PAYMENT_PROVIDER env:", process.env.PAYMENT_PROVIDER);
+  console.log("[create-payment] NODE_ENV:", process.env.NODE_ENV);
+  console.log("[create-payment] APP_BASE_URL env:", process.env.APP_BASE_URL);
+
   const ip = getClientIp(request);
   const limit = await checkRateLimit(ip, 10, 10 * 60 * 1000);
   if (!limit.allowed) {
@@ -69,6 +73,7 @@ export async function POST(request: Request) {
   const rawProvider = process.env.PAYMENT_PROVIDER;
   const providerName: RealProvider | "mock" =
     REAL_PROVIDERS.includes(rawProvider as RealProvider) ? (rawProvider as RealProvider) : "mock";
+  console.log("[create-payment] resolved providerName:", providerName);
 
   if (providerName !== "mock") {
     // ─── Real provider flow (newebpay / ecpay) ───
@@ -99,6 +104,7 @@ export async function POST(request: Request) {
 
     // 4. Whitelist safe fields — never expose HashKey/HashIV/CheckMacValue to client
     const { amountTwd: _amt, providerName: _pn, providerPaymentId, providerRawResponse, ...safePayment } = payment;
+    console.log("[create-payment] REAL PROVIDER: returning formHtml?", !!providerResult.formHtml, "provider:", providerResult.provider);
     return Response.json({
       payment: safePayment,
       analysisId: analysis.id,
