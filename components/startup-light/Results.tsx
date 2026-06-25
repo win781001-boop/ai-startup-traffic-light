@@ -35,7 +35,7 @@ export function AnalysisMeta({ analysisData }: AnalysisMetaProps) {
         </div>
       )}
       <div className="mt-2 border-t border-white/[0.06] pt-2">
-        <p className="text-xs text-text-secondary/60">版本：v0.4-alpha</p>
+        <p className="text-xs text-text-secondary/60"></p>
       </div>
     </div>
   );
@@ -122,7 +122,7 @@ export function DownloadReportButton({ analysisResult, analysisData, answers }: 
       "</style></head><body><div class=container>" +
       "<div class=header><h1>AI創業紅綠燈 判定報告</h1><div class=meta>" +
       "判定編號:" + analysisData.analysisId + "<br>判定時間:" + formatTime(analysisData.completedAt || analysisData.createdAt) +
-      "<br>版本:v0.4-alpha" + "</div></div>" +
+
       "<div class=\"light-card light-" + analysisResult.light + "\"><div><span class=light-dot></span><span class=light-label>" + L +
       "</span></div><h2>" + analysisResult.title + "</h2><p>" + analysisResult.oneLineJudgement + "</p></div>" +
       "<div class=card><h3>你的本次回答摘要</h3>" + a + "</div>" + s + sm +

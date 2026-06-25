@@ -133,6 +133,18 @@ export default function Home() {
           setPaymentData({ id: urlPaymentId, createdAt: data.paidAt || new Date().toISOString() });
           setPaymentConfirmed(true);
           setShowFullForm(true);
+          const savedPrecheck = sessionStorage.getItem("startup-light-precheck");
+          if (savedPrecheck) {
+            try {
+              const parsed = JSON.parse(savedPrecheck);
+              setFullForm((prev) => ({
+                ...prev,
+                idea: parsed.idea || "",
+                targetUser: parsed.targetUser || "",
+                problem: parsed.problem || "",
+              }));
+            } catch { /* ignore corrupt sessionStorage data */ }
+          }
           setUrlHandoffStatus("paid");
           setFullError(null);
         } else if (data.status === "pending") {
@@ -178,6 +190,7 @@ export default function Home() {
     setAnalysisResult(null);
     setPaymentFormHtml(null);
     setFullError(null);
+    sessionStorage.removeItem("startup-light-precheck");
   }
 
   function updateFullField(key: string, value: string) {
@@ -199,6 +212,7 @@ export default function Home() {
       setFullForm((prev) => ({ ...prev, idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
       return;
     }
+    sessionStorage.setItem("startup-light-precheck", JSON.stringify({ idea: riskForm.idea, targetUser: riskForm.targetUser, problem: riskForm.problem }));
     setShowPayment(true);
   }
 
@@ -262,6 +276,7 @@ export default function Home() {
       setAnalysisData(result);
       if (result.hasSignal && result.analysisResult && isValidAnalysisResult(result.analysisResult)) {
         setAnalysisResult(result.analysisResult);
+        sessionStorage.removeItem("startup-light-precheck");
       }
     } catch {
       setFullError("無法連接到伺服器，請檢查網路連線。");
@@ -517,7 +532,7 @@ export default function Home() {
             <span className="text-white/15">｜</span>
             <a href="/refund" className="text-white/30 hover:text-white/60 transition">退款政策</a>
           </nav>
-          <p className="text-xs text-white/15">AI創業紅綠燈 v0.19-alpha — 僅供參考，請自行驗證市場需求</p>
+          <p className="text-xs text-white/15">AI創業紅綠燈 — 僅供參考，請自行驗證市場需求</p>
           <p className="text-xs text-white/30">聯絡信箱：<a href="mailto:service@aistartuplight.com" className="text-white/30 hover:text-white/60 transition">service@aistartuplight.com</a></p>
           <p className="text-xs text-white/30">服務時間：週一至週五 09:00–18:00</p>
         </footer>
