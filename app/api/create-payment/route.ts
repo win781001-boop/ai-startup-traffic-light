@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       description: "AI創業紅綠燈 首次完整報告",
       merchantOrderNo: payment.id,
       notifyUrl: `${baseUrl}/api/payment-webhook`,
-      returnUrl: `${baseUrl}/payment/result?paymentId=${payment.id}&analysisId=${analysis.id}`,
+      returnUrl: `${baseUrl}/api/payment-result-return?paymentId=${payment.id}&analysisId=${analysis.id}`,
     });
 
     // 3. Store providerPaymentId on Payment record for callback lookup.
