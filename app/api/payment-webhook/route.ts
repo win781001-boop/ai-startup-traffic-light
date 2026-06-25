@@ -345,40 +345,127 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
     return new Response("0|invalid_provider_payment_id");
   }
 
-  // 8. Build dedupeKey and check duplicates
+  // 8. Build dedupeKey and check duplicates (with resume support)
   const dedupeKey = `ecpay:${providerPaymentId}`;
+
+  // Persist payment confirmation with retry for transient DB errors
+  const persistResponse = await withDbRetry(
+    () => persistECPayPayment(payment.id, providerPaymentId, rawBody, dedupeKey),
+    { maxRetries: 2, context: { merchantTradeNo, paymentId: payment.id, dedupeKey } },
+  );
+  return persistResponse;
+}
+
+function isTransientDbError(error: unknown): boolean {
+  const err = error as Record<string, unknown> | null;
+  const code = typeof err?.code === "string" ? err.code : undefined;
+  const name = typeof err?.name === "string" ? err.name : undefined;
+  const message = typeof err?.message === "string" ? err.message : "";
+  if (code === "57P01") return true;
+  if (name === "DriverAdapterError") return true;
+  if (message.includes("terminating connection")) return true;
+  if (message.includes("57P01")) return true;
+  return false;
+}
+
+async function withDbRetry<T>(fn: () => Promise<T>, options: { maxRetries: number; context: Record<string, unknown> }): Promise<T> {
+  let lastError;
+  for (let attempt = 0; attempt <= options.maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientDbError(error)) throw error;
+      if (attempt < options.maxRetries) {
+        console.warn("[payment-webhook] transient DB error, retrying", JSON.stringify({
+          attempt: attempt + 1,
+          maxRetries: options.maxRetries,
+          errorCode: typeof error === "object" && error ? String((error as Record<string, unknown>).code ?? (error as Record<string, unknown>).name ?? "") || "unknown" : "unknown",
+          ...options.context,
+        }));
+        await new Promise(r => setTimeout(r, 100 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function persistECPayPayment(paymentId: string, providerPaymentId: string, rawBody: string, dedupeKey: string): Promise<Response> {
   const existing = await recordStore.getPaymentWebhookLogByDedupeKey(dedupeKey);
+  const currentPayment = await recordStore.getPayment(paymentId);
+
   if (existing) {
-    // Already processed — acknowledge to prevent retries
-    console.log("[payment-webhook] already processed, returning 1|OK");
+    if (existing.processed && currentPayment && currentPayment.status === "paid") {
+      console.log("[payment-webhook] dedupe: already processed, payment paid, returning 1|OK");
+      return new Response("1|OK");
+    }
+
+    if (existing.processed && (!currentPayment || currentPayment.status !== "paid")) {
+      console.error("[payment-webhook] state mismatch", JSON.stringify({
+        step: "dedupe_check",
+        paymentId,
+        paymentStatus: (currentPayment && currentPayment.status) || "(not_found)",
+        dedupeKey,
+        logId: existing.id,
+        logVerified: existing.verified,
+        logProcessed: existing.processed,
+        logErrorMessage: existing.errorMessage || null,
+      }));
+      return new Response("0|state_mismatch");
+    }
+
+    if (!existing.processed && currentPayment && currentPayment.status === "paid") {
+      console.log("[payment-webhook] dedupe: payment already paid, fixing log");
+      await recordStore.markPaymentWebhookLogProcessed(existing.id);
+      return new Response("1|OK");
+    }
+
+    // Case D: Resume from where we left off
+    console.log("[payment-webhook] dedupe: existing log found, resuming from verification");
+
+    if (!existing.verified) {
+      await recordStore.updatePaymentWebhookLogVerification(existing.id, {
+        verified: true,
+        signatureValid: true,
+        amountMatch: true,
+      });
+    }
+
+    const updatedPayment = await recordStore.confirmPaymentByWebhook(paymentId, {
+      providerPaymentId,
+      providerName: "ecpay",
+    });
+
+    if (!updatedPayment) {
+      await recordStore.markPaymentWebhookLogProcessed(existing.id, {
+        errorMessage: "payment already processed",
+      });
+      return new Response("1|OK");
+    }
+
+    await recordStore.markPaymentWebhookLogProcessed(existing.id);
+    console.log("[payment-webhook] resume success, returning 1|OK");
     return new Response("1|OK");
   }
 
-  // 9. Create PaymentWebhookLog
-  let log;
-  try {
-    log = await recordStore.createPaymentWebhookLog({
-      paymentId: payment.id,
-      providerName: "ecpay",
-      providerPaymentId,
-      dedupeKey,
-      eventType: "payment_paid",
-      rawPayload: rawBody,
-    });
-  } catch {
-    console.log("[payment-webhook] log creation failed, returning 0|log_failed");
-    return new Response("0|log_failed");
-  }
+  // No existing log - normal flow
+  const log = await recordStore.createPaymentWebhookLog({
+    paymentId,
+    providerName: "ecpay",
+    providerPaymentId,
+    dedupeKey,
+    eventType: "payment_paid",
+    rawPayload: rawBody,
+  });
 
-  // 10. Update verification (signature + amount already checked)
   await recordStore.updatePaymentWebhookLogVerification(log.id, {
     verified: true,
     signatureValid: true,
     amountMatch: true,
   });
-  // 11. Confirm payment (safe: only updates if status === "pending")
+
   console.log("[payment-webhook] calling confirmPaymentByWebhook...");
-  const updatedPayment = await recordStore.confirmPaymentByWebhook(payment.id, {
+  const updatedPayment = await recordStore.confirmPaymentByWebhook(paymentId, {
     providerPaymentId,
     providerName: "ecpay",
   });
@@ -391,7 +478,6 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
     return new Response("1|OK");
   }
 
-  // 12. Mark success and acknowledge
   await recordStore.markPaymentWebhookLogProcessed(log.id);
   console.log("[payment-webhook] success, returning 1|OK");
   return new Response("1|OK");
