@@ -85,19 +85,7 @@ export function generateCheckMacValue(
 
   // 5. SHA-256 → uppercase hex
   const hash = crypto.createHash("sha256").update(lowerEncoded, "utf8").digest("hex");
-  const checkMacValue = hash.toUpperCase();
-
-  // Debug: log masked raw + encoded + hash (keys masked for safety)
-  const maskKey = (s: string) => s.length > 6 ? s.slice(0, 3) + "..." + s.slice(-3) : s;
-  const maskedRaw = raw
-    .replace(hashKey, maskKey(hashKey))
-    .replace(hashIV, maskKey(hashIV));
-  console.log("[ecpay] checkmac keys", JSON.stringify(sortedKeys));
-  console.log("[ecpay] checkmac raw", maskedRaw);
-  console.log("[ecpay] checkmac encoded", lowerEncoded);
-  console.log("[ecpay] checkmac hash", checkMacValue);
-
-  return checkMacValue;
+  return hash.toUpperCase();
 }
 
 /**

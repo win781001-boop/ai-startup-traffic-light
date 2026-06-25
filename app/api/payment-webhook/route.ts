@@ -251,10 +251,8 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
     return new Response("0|content_type_error");
   }
 
-  console.log("[payment-webhook] content-type OK, reading body...");
   const rawBody = await request.text();
   console.log("[payment-webhook] raw body length:", rawBody.length);
-  console.log("[payment-webhook] raw body preview:", rawBody.slice(0, 300));
   const params = new URLSearchParams(rawBody);
   const payload: Record<string, unknown> = Object.fromEntries(params.entries());
   console.log("[payment-webhook] parsed params", JSON.stringify({
@@ -281,9 +279,12 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
     return new Response("0|callback_error");
   }
 
+  const pidMasked = verifyResult?.providerPaymentId
+    ? "***" + verifyResult.providerPaymentId.slice(-6)
+    : "(none)";
   console.log("[payment-webhook] verify result", JSON.stringify({
     paid: verifyResult?.paid,
-    providerPaymentId: verifyResult?.providerPaymentId ?? "(none)",
+    providerPaymentIdMasked: pidMasked,
     amountTwd: verifyResult?.amountTwd,
     rawReason: verifyResult?.raw?.reason ?? "(none)",
   }));
@@ -316,8 +317,11 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
   // 5. Lookup Payment by providerPaymentId (= MerchantTradeNo)
   //    This short ID was stored on the Payment record during create-payment.
   const payment = await recordStore.getPaymentByProviderPaymentId(merchantTradeNo);
+  const tnoMasked = merchantTradeNo.length > 8
+    ? merchantTradeNo.slice(0, 4) + "***" + merchantTradeNo.slice(-4)
+    : merchantTradeNo;
   console.log("[payment-webhook] payment lookup", JSON.stringify({
-    merchantTradeNo,
+    merchantTradeNoMasked: tnoMasked,
     found: !!payment,
     paymentId: payment?.id ?? "(none)",
     paymentStatus: payment?.status ?? "(none)",
@@ -351,7 +355,7 @@ async function handleECPayWebhook(request: Request): Promise<Response> {
   // Persist payment confirmation with retry for transient DB errors
   const persistResponse = await withDbRetry(
     () => persistECPayPayment(payment.id, providerPaymentId, rawBody, dedupeKey),
-    { maxRetries: 2, context: { merchantTradeNo, paymentId: payment.id, dedupeKey } },
+    { maxRetries: 2, context: { merchantTradeNo: merchantTradeNo.length > 8 ? merchantTradeNo.slice(0, 4) + "***" + merchantTradeNo.slice(-4) : merchantTradeNo, paymentId: payment.id, dedupeKey: "ecpay:***" + providerPaymentId.slice(-6) } },
   );
   return persistResponse;
 }
@@ -405,7 +409,7 @@ async function persistECPayPayment(paymentId: string, providerPaymentId: string,
         step: "dedupe_check",
         paymentId,
         paymentStatus: (currentPayment && currentPayment.status) || "(not_found)",
-        dedupeKey,
+        dedupeKey: "ecpay:***" + providerPaymentId.slice(-6),
         logId: existing.id,
         logVerified: existing.verified,
         logProcessed: existing.processed,
