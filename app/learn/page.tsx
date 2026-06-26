@@ -14,6 +14,13 @@ export const metadata: Metadata = {
 
 const articles = [
   {
+    title: "AI 創業 QA",
+    url: "/learn/ai-startup-questions",
+    description:
+      "先確認你卡在需求、付費、產品、成本、第一批使用者，還是下一步決策。",
+    tags: ["創業 QA", "問題定位"],
+  },
+  {
     title: "一人公司 OPC 是什麼？AI 時代的 One Person Company 與超級個體",
     url: "/one-person-company-opc",
     description:
