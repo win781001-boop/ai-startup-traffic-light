@@ -57,7 +57,6 @@ type RealProvider = (typeof REAL_PROVIDERS)[number];
 
 export async function POST(request: Request) {
   console.log("[create-payment] PAYMENT_PROVIDER env:", process.env.PAYMENT_PROVIDER);
-  console.log("[create-payment] NODE_ENV:", process.env.NODE_ENV);
   console.log("[create-payment] APP_BASE_URL env:", process.env.APP_BASE_URL);
 
   const ip = getClientIp(request);
@@ -105,7 +104,6 @@ export async function POST(request: Request) {
     // 4. Whitelist safe fields — never expose HashKey/HashIV/CheckMacValue to client
     const { amountTwd: _amt, providerName: _pn, providerPaymentId, providerRawResponse, ...safePayment } = payment;
     console.log("[create-payment] REAL PROVIDER: returning formHtml?", !!providerResult.formHtml, "provider:", providerResult.provider);
-    console.log("[create-payment] response debug", JSON.stringify({ hasFormHtml: !!providerResult.formHtml, formHtmlLength: providerResult.formHtml?.length, responseKeys: Object.keys({ payment: safePayment, analysisId: analysis.id, formHtml: providerResult.formHtml }) }));
     return Response.json({
       payment: safePayment,
       analysisId: analysis.id,
