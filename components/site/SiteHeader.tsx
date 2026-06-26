@@ -72,6 +72,10 @@ export default function SiteHeader() {
             )}
           </div>
           <span aria-hidden="true" className="text-slate-400/60 select-none">|</span>
+          <a href="/learn/ai-startup-questions" className="text-text-secondary hover:text-red-light transition-colors">
+            AI創業 QA
+          </a>
+          <span aria-hidden="true" className="text-slate-400/60 select-none">|</span>
           <a href="/" className="text-text-secondary hover:text-red-light transition-colors">
             開工前檢查
           </a>
@@ -110,6 +114,13 @@ export default function SiteHeader() {
             className="block rounded-md px-3 py-2 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
           >
             開工前檢查
+          </a>
+          <a
+            href="/learn/ai-startup-questions"
+            onClick={() => setMobileOpen(false)}
+            className="block rounded-md px-3 py-2 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
+          >
+            AI創業 QA
           </a>
           <div>
             <button
