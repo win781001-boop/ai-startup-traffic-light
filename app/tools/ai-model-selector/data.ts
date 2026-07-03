@@ -111,6 +111,112 @@ export const categories: Category[] = [
       },
     ],
   },
+  {
+    id: "how_use",
+    title: "你通常怎麼使用 AI？",
+    subGroups: [
+      {
+        id: "how_use_items",
+        title: "",
+        items: [
+          { id: "how_use_direct", text: "直接告訴 AI 我想做什麼" },
+          { id: "how_use_discuss", text: "會跟 AI 來回討論，把想法慢慢整理出來" },
+          { id: "how_use_revise", text: "會先看 AI 做出的第一版，再請它修改" },
+          { id: "how_use_step", text: "會請 AI 一步一步帶我完成一件事" },
+          { id: "how_use_prompt", text: "會請 AI 幫我反推或優化提示詞" },
+          { id: "how_use_ref", text: "會給 AI 參考資料或範例，請它依照內容幫我處理" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "priority",
+    title: "你最在意什麼？",
+    subGroups: [
+      {
+        id: "priority_quality",
+        title: "回答與理解能力",
+        items: [
+          { id: "priority_factual", text: "回答問題要有依據，不要未經查證就亂回覆" },
+          { id: "priority_search", text: "能搜尋最新資料，並附上來源或協助查證" },
+          { id: "priority_context", text: "一次能理解很長的對話、文件、資料或程式碼" },
+          { id: "priority_follow", text: "能照我的要求做，不要常常自行改方向" },
+          { id: "priority_traditional", text: "繁體中文自然，能理解台灣常用說法" },
+        ],
+      },
+      {
+        id: "priority_experience",
+        title: "長期合作與使用體驗",
+        items: [
+          { id: "priority_memory", text: "換到新對話後，還能延續我的偏好、背景或專案脈絡" },
+          { id: "priority_speed", text: "回應速度快，適合頻繁來回討論" },
+          { id: "priority_quota", text: "不想太容易碰到額度、排隊或功能限制" },
+          { id: "priority_cross", text: "手機和電腦都方便使用" },
+        ],
+      },
+      {
+        id: "priority_freedom",
+        title: "回應限制、創作自由度與隱私",
+        items: [
+          { id: "priority_sensitive", text: "遇到複雜、敏感或邊界問題時，不要太快中斷回答" },
+          { id: "priority_adult", text: "需要處理成人分級、情色或尺度較高的創作內容" },
+          { id: "priority_privacy", text: "重視我上傳文件、資料與對話內容的隱私" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "budget",
+    title: "預算與使用方式",
+    subGroups: [
+      {
+        id: "budget_cost",
+        title: "你大概可以接受多少費用？",
+        items: [
+          { id: "budget_cost_free", text: "目前只想用免費的" },
+          { id: "budget_cost_300", text: "每月 300 元內可以接受" },
+          { id: "budget_cost_600", text: "每月 300～600 元可以接受" },
+          { id: "budget_cost_1000", text: "每月 600～1,000 元可以接受" },
+        ],
+      },
+      {
+        id: "budget_frequency",
+        title: "你每月使用 AI 的頻率？",
+        items: [
+          { id: "budget_freq_rare", text: "很少使用，一個月幾次以內" },
+          { id: "budget_freq_weekly", text: "偶爾使用，幾乎每週都會用" },
+          { id: "budget_freq_daily", text: "經常使用，幾乎每天都會用" },
+          { id: "budget_freq_heavy", text: "頻繁使用，每天都會用，而且每天超過 3 小時" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "current",
+    title: "目前的 AI 使用狀況",
+    subGroups: [
+      {
+        id: "ai_experience",
+        title: "你目前使用 AI 的經驗？",
+        items: [
+          { id: "current_exp_none", text: "幾乎沒用過" },
+          { id: "current_exp_few", text: "用過幾次，但還不熟" },
+          { id: "current_exp_regular", text: "已經有固定在用" },
+          { id: "current_exp_proficient", text: "已經很熟，也大概知道自己要什麼" },
+        ],
+      },
+      {
+        id: "prompt_skill",
+        title: "你目前自己寫提示詞的熟悉程度？",
+        items: [
+          { id: "current_prompt_no", text: "幾乎不會，通常直接隨便問" },
+          { id: "current_prompt_simple", text: "會簡單描述需求，但不太會調整" },
+          { id: "current_prompt_refine", text: "會慢慢修改提示詞，讓結果更接近我要的" },
+          { id: "current_prompt_expert", text: "已經很熟，會自己設計或優化提示詞" },
+        ],
+      },
+    ],
+  },
 ];
 
 // ─── Legacy quiz data (preserved for backward compat) ───
@@ -299,3 +405,4 @@ export function generateSummary(
   const traitStr = traits.length > 0 ? traits.join("、") : "多種面向";
   return `你重視${traitStr}，因此 ${modelName} 較適合作為你目前的主力 AI。`;
 }
+
