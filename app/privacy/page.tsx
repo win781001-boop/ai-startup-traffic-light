@@ -40,8 +40,8 @@
             <p>本系統不會將使用者填寫內容任意公開作為案例。</p>
             <p>除依法令要求、金流處理、系統維護或必要服務提供外，不會任意出售或提供使用者資料給無關第三方。</p>
             <p>使用者若對資料保存或刪除有疑問，可透過服務頁面提供的聯絡方式聯繫。</p>
-            <p>未來若接入正式金流，付款資料可能由第三方金流服務商依其政策處理。</p>
-            <p className="text-xs text-white/40 border-t border-white/[0.06] pt-4 mt-4">聯絡方式：本服務正式上線後，將於頁面提供客服信箱。</p>
+            <p>付款資料由第三方金流服務商依其隱私權政策處理。</p>
+            <p className="text-xs text-white/40 border-t border-white/[0.06] pt-4 mt-4">聯絡方式：service@aistartuplight.com</p>
           </div>
         </section>
 

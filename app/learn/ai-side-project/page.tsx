@@ -1,6 +1,4 @@
 ﻿import type { Metadata } from "next";
-import SiteHeader from "@/components/site/SiteHeader";
-
 export const metadata: Metadata = {
   title: "AI 副業不該先開工：<br />開工前先回答 6 個問題｜AI創業小學堂",
   description:
@@ -15,7 +13,7 @@ export const metadata: Metadata = {
 export default function AiSideProjectPage() {
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SiteHeader />
+
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
         <h1 className="mb-6 text-3xl font-bold leading-[1.35] tracking-tight text-white sm:text-4xl">
@@ -27,7 +25,7 @@ export default function AiSideProjectPage() {
             為什麼 AI 副業讓人想立刻開工？
           </h2>
           <p>
-            2025 年的 AI 工具已經強到讓一個人能在一個周末產出產品原型。Cursor、Bolt.new、Claude、ChatGPT——這些工具讓「做一個 AI 工具」這件事的門檫降到史無前侎的低。想做副業的人，越來越容易說服自己「先開工再說」。
+            2025 年的 AI 工具已經強到讓一個人能在一個周末產出產品原型。Cursor、Bolt.new、Claude、ChatGPT——這些工具讓「做一個 AI 工具」這件事的門檻降到史無前例的低。想做副業的人，越來越容易說服自己「先開工再說」。
           </p>
           <p>
             但這正是問題所在。AI 讓開工變快，也讓錯誤決策變快。以前花三個月才發現的坑，現在三週就踩進去了。真正麻煩的不是做不出來，而是做完才發現沒人要。
@@ -78,7 +76,7 @@ export default function AiSideProjectPage() {
             免費使用者和付費使用者是兩種生物。有人登入、有人留 email、有人說「好想要」——這些都不算。只有當有人按下「付費」按鈕時，才算數。
           </p>
           <p>
-            想知道有沒有付費意願，在開工前就可以測試：做一個 landing page，看多少人愿意預購或留下 email。如果 10 個人裡有 3 個以上說會付錢，你可以繼續下去。如果沒有，不要再花更多時間。
+            想知道有沒有付費意願，在開工前就可以測試：做一個 landing page，看多少人願意預購或留下 email。如果 10 個人裡有 3 個以上說會付錢，你可以繼續下去。如果沒有，不要再花更多時間。
           </p>
 
           <h2 className="mt-10 text-xl font-semibold text-white">
@@ -88,7 +86,7 @@ export default function AiSideProjectPage() {
             如果你的 MVP 需要超過兩週，代表切太大了。一人公司的資源極有限，不要想一次做一個平台。切到最小可交付的版本，兩週內能上線的那種。如果兩週生不出來，代表你切太大了。
           </p>
           <p>
-            MVP 的目的不是「做一個完整的產品」，而是「用最小成本驗證有沒有人愿意付費」。
+            MVP 的目的不是「做一個完整的產品」，而是「用最小成本驗證有沒有人願意付費」。
           </p>
 
           <h2 className="mt-10 text-xl font-semibold text-white">

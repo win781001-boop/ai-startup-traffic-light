@@ -31,8 +31,8 @@
             <p>若系統要求補充內容，代表本次輸入資訊不足，並非系統錯誤。此情況會提供本次付款可用的修改次數，不視為退款事由。</p>
             <p>若因系統錯誤導致本次判定未能完成，將保留本次付款資格，或依實際情況協助處理退款。</p>
             <p>若發生重複扣款，使用者可聯繫客服協助確認與處理。</p>
-            <p>未來接入正式金流後，退款作業時間與方式將依實際金流服務商規定辦理。</p>
-            <p className="text-xs text-white/40 border-t border-white/[0.06] pt-4 mt-4">聯絡方式：本服務正式上線後，將於頁面提供客服信箱。</p>
+            <p>退款作業時間與方式將依實際金流服務商規定辦理。</p>
+            <p className="text-xs text-white/40 border-t border-white/[0.06] pt-4 mt-4">聯絡方式：service@aistartuplight.com</p>
           </div>
         </section>
 

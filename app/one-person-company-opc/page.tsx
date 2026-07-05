@@ -1,6 +1,4 @@
 ﻿import type { Metadata } from "next";
-import SiteHeader from "@/components/site/SiteHeader";
-
 export const metadata: Metadata = {
   title: "一人公司 OPC 是什麼？AI 時代的 One Person Company 與超級個體",
   description:
@@ -15,7 +13,7 @@ export const metadata: Metadata = {
 export default function OnePersonCompanyOpcPage() {
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SiteHeader />
+
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <article className="mx-auto max-w-2xl rounded-[2rem] border border-[#2fd88f] bg-[#1a1f2e] px-6 py-8 shadow-lg sm:px-8 sm:py-10">
         <h1 className="mb-6 text-3xl font-bold leading-[1.35] tracking-tight text-white sm:text-4xl">

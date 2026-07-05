@@ -20,7 +20,7 @@
             <p>本系統不接受非法、詐欺、灰色產業、侵害他人權利或其他高風險用途。</p>
             <p>使用者仍需自行承擔後續商業決策與執行風險。</p>
             <p>本系統可能依實際營運狀況調整內容、價格或功能，不另個別通知。</p>
-            <p className="text-xs text-white/40 border-t border-white/[0.06] pt-4 mt-4">聯絡方式：本服務正式上線後，將於頁面提供客服信箱。</p>
+            <p className="text-xs text-white/40 border-t border-white/[0.06] pt-4 mt-4">聯絡方式：service@aistartuplight.com</p>
           </div>
         </section>
 

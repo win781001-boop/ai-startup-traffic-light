@@ -14,7 +14,6 @@ function isValidAnalysisResult(data: unknown): data is AnalysisResult {
     Array.isArray(d.marketSignals)
   );
 }
-import SiteHeader from "@/components/site/SiteHeader";
 import { PrecheckForm } from "@/components/startup-light/PrecheckForm";
 import { PaymentPanel } from "@/components/startup-light/PaymentPanel";
 import { PaidQuestionForm } from "@/components/startup-light/PaidQuestionForm";
@@ -307,7 +306,7 @@ export default function Home() {
         <div className="absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-red-light/5 blur-[120px]" />
         <div className="absolute -bottom-40 left-1/4 h-[400px] w-[400px] rounded-full bg-green-light/5 blur-[100px]" />
       </div>
-      <SiteHeader />
+
 
       <div className="relative mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-20">
 

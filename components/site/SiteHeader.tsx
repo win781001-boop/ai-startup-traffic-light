@@ -7,11 +7,17 @@ export default function SiteHeader() {
   const [learnMobileOpen, setLearnMobileOpen] = useState(false);
   const learnRef = useRef<HTMLDivElement>(null);
   const mobileMenuId = "mobile-nav-menu";
+  const [precheckOpen, setPrecheckOpen] = useState(false);
+  const [precheckMobileOpen, setPrecheckMobileOpen] = useState(false);
+  const precheckRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (learnRef.current && !learnRef.current.contains(e.target as Node)) {
         setLearnOpen(false);
+      }
+      if (precheckRef.current && !precheckRef.current.contains(e.target as Node)) {
+        setPrecheckOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -71,14 +77,47 @@ export default function SiteHeader() {
               </div>
             )}
           </div>
-          <span aria-hidden="true" className="text-slate-400/60 select-none">|</span>
-          <a href="/learn/ai-startup-questions" className="text-text-secondary hover:text-red-light transition-colors">
-            AI創業 QA
-          </a>
-          <span aria-hidden="true" className="text-slate-400/60 select-none">|</span>
-          <a href="/" className="text-text-secondary hover:text-red-light transition-colors">
-            開工前檢查
-          </a>
+          <div className="relative" ref={precheckRef}>
+            <button
+              onClick={() => setPrecheckOpen(!precheckOpen)}
+              className="flex items-center gap-1 text-text-secondary hover:text-red-light transition-colors cursor-pointer"
+            >
+              開工前檢查
+              <svg
+                className="h-3 w-3 mt-0.5 transition-transform duration-200"
+                viewBox="0 0 12 12"
+                fill="none"
+                style={{ transform: precheckOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {precheckOpen && (
+              <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[14rem] rounded-lg border border-white/[0.06] bg-bg-card/95 backdrop-blur-md p-1.5 shadow-lg">
+                <a
+                  href="/tools/ai-model-selector"
+                  onClick={() => setPrecheckOpen(false)}
+                  className="block rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-red-light transition-colors"
+                >
+                  <div>AI 模型選擇器</div>
+                </a>
+                <a
+                  href="/learn/ai-startup-questions"
+                  onClick={() => setPrecheckOpen(false)}
+                  className="block rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-red-light transition-colors"
+                >
+                  <div>AI 創業 QA</div>
+                </a>
+                <a
+                  href="/"
+                  onClick={() => setPrecheckOpen(false)}
+                  className="block rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-red-light transition-colors"
+                >
+                  開始 AI 創業檢查
+                </a>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mobile hamburger button */}
@@ -108,20 +147,47 @@ export default function SiteHeader() {
           id={mobileMenuId}
           className="sm:hidden absolute left-0 right-0 top-full z-50 border-t border-white/[0.06] bg-bg-primary/95 backdrop-blur-md px-4 pb-4 pt-2 space-y-1"
         >
-          <a
-            href="/"
-            onClick={() => setMobileOpen(false)}
-            className="block rounded-md px-3 py-2 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
-          >
-            開工前檢查
-          </a>
-          <a
-            href="/learn/ai-startup-questions"
-            onClick={() => setMobileOpen(false)}
-            className="block rounded-md px-3 py-2 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
-          >
-            AI創業 QA
-          </a>
+          <div>
+            <button
+              onClick={() => setPrecheckMobileOpen(!precheckMobileOpen)}
+              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors cursor-pointer"
+            >
+              開工前檢查
+              <svg
+                className="h-3 w-3 transition-transform duration-200"
+                viewBox="0 0 12 12"
+                fill="none"
+                style={{ transform: precheckMobileOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {precheckMobileOpen && (
+              <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-3">
+                <a
+                  href="/tools/ai-model-selector"
+                  onClick={() => { setMobileOpen(false); setPrecheckMobileOpen(false); }}
+                  className="block rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
+                >
+                  <div>AI 模型選擇器</div>
+                </a>
+                <a
+                  href="/learn/ai-startup-questions"
+                  onClick={() => { setMobileOpen(false); setPrecheckMobileOpen(false); }}
+                  className="block rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
+                >
+                  <div>AI 創業 QA</div>
+                </a>
+                <a
+                  href="/"
+                  onClick={() => { setMobileOpen(false); setPrecheckMobileOpen(false); }}
+                  className="block rounded-md px-3 py-1.5 text-sm text-text-secondary hover:text-red-light hover:bg-white/[0.03] transition-colors"
+                >
+                  開始 AI 創業檢查
+                </a>
+              </div>
+            )}
+          </div>
           <div>
             <button
               onClick={() => setLearnMobileOpen(!learnMobileOpen)}

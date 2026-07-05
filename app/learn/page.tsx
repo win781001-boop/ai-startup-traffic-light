@@ -1,6 +1,4 @@
 ﻿import type { Metadata } from "next";
-import SiteHeader from "@/components/site/SiteHeader";
-
 export const metadata: Metadata = {
   title: "AI創業小學堂｜AI 副業、一人公司與開工前風險檢查",
   description:
@@ -52,7 +50,7 @@ const upcoming = [
 export default function LearnPage() {
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SiteHeader />
+
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6">
       <div className="mx-auto max-w-2xl">
         <h1 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
