@@ -1,5 +1,4 @@
 import { EnFitSection } from "./EnFitSection";
-import { EnFooter } from "./EnFooter";
 import { EnHero } from "./EnHero";
 import { EnPrecheckPreview } from "./EnPrecheckPreview";
 import { EnScopeNotice } from "./EnScopeNotice";
@@ -17,7 +16,6 @@ export function EnHomeFlow() {
         <EnFitSection />
         <EnScopeNotice />
         <EnPrecheckPreview />
-        <EnFooter />
       </div>
     </main>
   );

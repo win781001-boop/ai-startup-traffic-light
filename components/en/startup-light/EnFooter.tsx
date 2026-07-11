@@ -1,19 +1,6 @@
 export function EnFooter() {
   return (
     <footer className="mt-16 space-y-3 text-center">
-      <nav className="flex items-center justify-center gap-3 text-xs">
-        <a href="/terms" className="text-white/30 transition hover:text-white/60">
-          Terms
-        </a>
-        <span className="text-white/15">/</span>
-        <a href="/privacy" className="text-white/30 transition hover:text-white/60">
-          Privacy
-        </a>
-        <span className="text-white/15">/</span>
-        <a href="/refund" className="text-white/30 transition hover:text-white/60">
-          Refund policy
-        </a>
-      </nav>
       <p className="text-xs text-white/15">
         AI Startup Traffic Light - for early business-risk reference only.
       </p>

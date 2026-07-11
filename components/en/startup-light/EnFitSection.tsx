@@ -41,7 +41,7 @@ function FitCard({
 
 export function EnFitSection() {
   return (
-    <section className="mb-12 grid gap-4 sm:grid-cols-2">
+    <section id="who-it-is-for" className="mb-12 grid gap-4 sm:grid-cols-2">
       <FitCard title="Good fit if..." tone="green" items={goodFitItems} />
       <FitCard title="Not a fit if..." tone="red" items={poorFitItems} />
     </section>
